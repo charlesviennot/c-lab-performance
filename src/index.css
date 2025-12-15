@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Configuration globale pour le comportement "App Mobile" */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  
+  /* Empêche le "rebond" élastique typique de Safari sur iPhone */
+  overscroll-behavior-y: none;
+  
+  /* Enlève la zone de sélection bleue/grise quand on tape sur un bouton mobile */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Fond gris très clair par défaut (Slate-50) pour éviter le blanc agressif */
+  background-color: #f8fafc;
+  
+  /* Police par défaut du système (San Francisco sur Mac/iPhone) */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Pour le défilement fluide */
+html {
+  scroll-behavior: smooth;
+}
