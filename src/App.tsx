@@ -6,17 +6,13 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus
+  Minus, Plus, Coffee
 } from 'lucide-react';
 
 // ==================================================================================
 // 👇👇👇 ZONE DE CONFIGURATION UTILISATEUR 👇👇👇
-//
-// INSTRUCTION : Remplace le lien ci-dessous par le "Lien Direct" de ton image.
-// (Ton lien doit commencer par "https://" et finir par ".png" ou ".jpg")
-//
 const LOGO_URL = "https://i.postimg.cc/KcQDQ1z4/Capture-d-e-cran-2025-12-08-a-02-13-55.png"; 
-//
+const DONATION_URL = "https://www.buymeacoffee.com/charles.viennot";
 // 👆👆👆 FIN DE LA ZONE DE CONFIGURATION 👆👆👆
 // ==================================================================================
 
@@ -140,7 +136,7 @@ const STRENGTH_PROTOCOLS = {
         imageUrl: "" },
       { name: "Élévations Latérales Poulie", sets: 3, reps: "15", rest: "45s", rpe: 9, note: "Tension continue.", imageKeyword: "cable lateral raise", instructions: "Poulie derrière le dos. Mouvement fluide, tension constante sur l'épaule latérale.", 
         imageUrl: "" },
-      { name: "Barre au Front (Skullcrusher)", sets: 3, reps: "10-12", rest: "60s", rpe: 8, note: "Masse Triceps.", imageKeyword: "skullcrusher", instructions: "Allongé. Descendez la barre vers le front (ou derrière la tête). Gardez les coudes serrés.", 
+      { name: "Extension Triceps Barre", sets: 3, reps: "10-12", rest: "60s", rpe: 8, note: "Masse Triceps.", imageKeyword: "skullcrusher", instructions: "Allongé. Descendez la barre vers le front (ou derrière la tête). Gardez les coudes serrés.", 
         imageUrl: "" },
       { name: "Curl Alterné Haltères", sets: 3, reps: "12/bras", rest: "60s", rpe: 8, note: "Finition Biceps.", imageKeyword: "dumbbell curl", instructions: "Debout. Supination (tournez la paume vers le haut) en montant. Ne balancez pas le buste.", 
         imageUrl: "" }
@@ -176,31 +172,38 @@ const ExerciseModal = ({ exercise, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
         
         {/* Header Image */}
-        <div className="h-48 bg-slate-100 relative overflow-hidden bg-white">
+        <div className="h-56 bg-slate-100 relative overflow-hidden bg-white shrink-0 group">
             <img 
                 src={imageSrc}
                 alt={exercise.name}
                 className={`w-full h-full ${objectFitClass}`}
                 onError={() => setImgError(true)}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent flex items-end p-6 pointer-events-none">
-                <div>
-                    <h3 className="text-2xl font-black text-white/80 leading-none drop-shadow-md">{exercise.name}</h3>
-                    <span className="text-white/60 text-xs font-medium uppercase tracking-wider drop-shadow-sm">
-                        {exercise.sets.toString().includes('bloc') || exercise.sets.toString().includes('temps') ? exercise.sets : `${exercise.sets} Séries`} x {exercise.reps}
-                    </span>
-                </div>
-            </div>
-            <button onClick={onClose} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition backdrop-blur-md">
+            
+            {/* Bouton Fermer (X) - Amélioré et bien visible */}
+            <button 
+                onClick={onClose} 
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"
+            >
                 <X size={20}/>
             </button>
+
+            {/* Cartouche Titre ÉPURÉ - Plus de cadre, juste le texte avec ombre */}
+            <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                    {exercise.name}
+                </h3>
+                <span className="text-white/60 text-xs font-bold uppercase tracking-wider mt-1 block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    {exercise.sets.toString().includes('bloc') || exercise.sets.toString().includes('temps') ? exercise.sets : `${exercise.sets} Séries`} x {exercise.reps}
+                </span>
+            </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        {/* Content (Défile si besoin) */}
+        <div className="p-6 space-y-6 overflow-y-auto">
             
             {/* Protocole */}
             <div className="flex gap-4">
@@ -236,7 +239,11 @@ const ExerciseModal = ({ exercise, onClose }) => {
                 </p>
             </div>
 
-            <button onClick={onClose} className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition">
+            {/* Bouton de validation (Fixe en bas de la modale) */}
+            <button 
+                onClick={onClose} 
+                className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-indigo-200 mt-2"
+            >
                 Compris, c'est parti !
             </button>
         </div>
@@ -959,6 +966,19 @@ export default function App() {
                     <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
                 </div>
             </div>
+            
+            {/* AJOUT : Bouton Don dans le Header */}
+            {DONATION_URL && (
+                <a 
+                  href={DONATION_URL} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-lg text-xs font-bold shadow-md transition-all active:scale-95 animate-pulse"
+                >
+                    <Coffee size={14}/> <span>Soutenir</span>
+                </a>
+            )}
+
             <div className="flex items-center gap-2">
                 <button onClick={() => generateICS(plan)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white transition" title="Ajouter au calendrier">
                     <CalendarIcon size={18} />
@@ -977,6 +997,19 @@ export default function App() {
         {/* MODAL EXERCICE */}
         {modalExercise && (
             <ExerciseModal exercise={modalExercise} onClose={() => setModalExercise(null)} />
+        )}
+        
+        {/* BOUTON FLOTTANT DONATION (MOBILE) */}
+        {step === 'result' && DONATION_URL && (
+             <a 
+                href={DONATION_URL} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 sm:hidden flex items-center gap-2 font-bold text-xs"
+             >
+                <Coffee size={20}/>
+                <span className="sr-only">Soutenir</span>
+             </a>
         )}
 
         {step === 'input' ? (
@@ -1118,19 +1151,19 @@ export default function App() {
             {plan.map((week) => {
                 const isOpen = expandedWeek === week.weekNumber;
                 
-                // Vérifier si TOUTES les séances de la semaine sont complétées
-                const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
-
                 // Filtre d'affichage pour le "Focus Jour"
                 const sessionsToShow = filteredSessionIds 
                     ? week.sessions.filter(s => filteredSessionIds.includes(s.id))
                     : week.sessions;
 
+                // Vérifier si TOUTES les séances de la semaine sont complétées
+                const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
+
                 // Indicateur visuel pour l'en-tête de semaine (Vert si fini)
                 const headerBgClass = allSessionsCompleted 
                     ? 'bg-green-50 border-green-200' 
                     : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
-              
+                
                 const headerIconClass = allSessionsCompleted
                     ? 'bg-green-600 text-white'
                     : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
@@ -1149,7 +1182,7 @@ export default function App() {
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
-                   
+                    
                     {isOpen && (
                       <div className="p-2 space-y-2">
                         {/* PLANNING IDEAL SUGGÉRÉ */}
@@ -1168,14 +1201,13 @@ export default function App() {
                                 </div>
                                 <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                     {week.schedule.map((day, i) => {
+                                        // Vérifier si le jour est sélectionné (comparaison de tableaux pour gérer les doubles)
                                         const isSelected = filteredSessionIds && 
                                             day.sessionIds !== null && 
                                             day.sessionIds.length === filteredSessionIds.length &&
                                             day.sessionIds.every((val, index) => val === filteredSessionIds[index]);
-                                       
+                                        
                                         const hasActivity = day.sessionIds.length > 0;
-                                       
-                                        // Vérifier si ce jour est entièrement complété
                                         const isDayCompleted = hasActivity && day.sessionIds.every(id => completedSessions.has(id));
 
                                         return (
@@ -1199,7 +1231,7 @@ export default function App() {
                                                      {isDayCompleted && !isSelected && <CheckCircle size={10} className="text-green-500 shrink-0"/>}
                                                      <span className={`font-medium truncate ${isSelected ? 'text-indigo-100' : day.activity.includes('Repos') ? 'text-slate-400' : 'text-indigo-600'}`}>
                                                         {day.activity}
-                                                     </span>
+                                                    </span>
                                                 </div>
                                             </div>
                                         );
@@ -1219,7 +1251,7 @@ export default function App() {
                             const isExpandedSession = expandedSession === session.id;
                             return (
                                 <div key={session.id} className={`rounded-lg border transition animate-in slide-in-from-bottom-2 ${isDone ? 'bg-slate-50 border-green-200 opacity-80' : 'bg-white border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
-                               
+                                
                                 <div onClick={() => { if(session.exercises) setExpandedSession(isExpandedSession ? null : session.id); else toggleSession(session.id); }} className="p-3 cursor-pointer">
                                     <div className="flex justify-between items-center mb-3">
                                         <div className="flex items-center gap-2">
@@ -1239,9 +1271,9 @@ export default function App() {
                                                     <div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-1.5 rounded"><Ruler size={12}/> {session.distance}</div>
                                                 )}
                                             </div>
-                                             
+                                            
                                             <p className="text-xs text-slate-600 leading-relaxed">{session.description}</p>
-                                             
+                                            
                                             {/* Conseil Planning */}
                                             {!isDone && session.planningAdvice && (
                                                 <div className="flex items-start gap-1.5 mt-1 bg-amber-50 p-2 rounded-lg text-[10px] text-amber-800 border border-amber-100">
@@ -1251,14 +1283,14 @@ export default function App() {
                                             )}
                                     </div>
 
-                                    {session.category === 'run' && session.paceGap > -1 && (
+                                    {session.paceGap > -1 && (
                                         <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1">
                                             <span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span>
                                             <span className="font-black text-slate-800 text-sm">{session.paceTarget}</span>
                                             <span className="text-[9px] text-slate-400">min/km</span>
                                         </div>
                                     )}
-                                     
+                                    
                                     {session.exercises && !isDone && (
                                         <div className="mt-2 text-center text-[10px] text-slate-400 font-medium">
                                             {isExpandedSession ? "Masquer détails" : "Voir détails séance ▼"}
@@ -1269,52 +1301,30 @@ export default function App() {
                                 {/* DETAIL EXERCICES (MUSCU OU RUN) - INTERACTIF */}
                                 {isExpandedSession && session.exercises && !isDone && (
                                     <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
-                                            <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
-                                            <div className="space-y-2">
-                                                {session.exercises.map((exo, idx) => {
-                                                    const uniqueExerciseId = `${session.id}-ex-${idx}`;
-                                                    const isChecked = completedExercises.has(uniqueExerciseId);
-                                                    
-                                                    return (
-                                                        <div 
-                                                            key={idx} 
-                                                            className={`bg-white p-2 rounded border transition-colors flex items-center gap-3
-                                                                ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}
-                                                            `}
-                                                        >
-                                                            {/* Checkbox Interactive */}
-                                                            <div 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleExercise(uniqueExerciseId);
-                                                                }}
-                                                                className="cursor-pointer"
-                                                            >
-                                                                {isChecked ? 
-                                                                    <CheckSquare size={20} className="text-green-500" /> : 
-                                                                    <Square size={20} className="text-slate-300 hover:text-indigo-400" />
-                                                                }
-                                                            </div>
-
-                                                            <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise(exo)}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <HelpCircle size={14} className="text-slate-300"/>
-                                                                    <div className={isChecked ? 'opacity-50' : ''}>
-                                                                        <div className="font-bold text-xs text-slate-800">{exo.name}</div>
-                                                                        <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                                                                    RPE {exo.rpe}
-                                                                </div>
-                                                            </div>
+                                        <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
+                                        <div className="space-y-2">
+                                            {session.exercises.map((exo, idx) => (
+                                                <div 
+                                                    key={idx} 
+                                                    onClick={() => setModalExercise(exo)}
+                                                    className="bg-white p-2 rounded border border-slate-200 flex justify-between items-center hover:bg-indigo-50 hover:border-indigo-200 transition cursor-help"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <HelpCircle size={14} className="text-slate-300"/>
+                                                        <div>
+                                                            <div className="font-bold text-xs text-slate-800">{exo.name}</div>
+                                                            <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1">
-                                                <CheckCircle size={12} /> Valider la séance
-                                            </button>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-[9px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">RPE {exo.rpe}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1">
+                                            <CheckCircle size={12} /> Valider la séance
+                                        </button>
                                     </div>
                                 )}
 
@@ -1328,7 +1338,7 @@ export default function App() {
                         )}
                       </div>
                     )}
-                   
+                    
                     {/* FEEDBACK SEMAINE - SEULEMENT SI TOUT EST FINI */}
                     {isOpen && allSessionsCompleted && (
                         <div className="p-4 border-t border-green-100 bg-green-50 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
@@ -1356,11 +1366,11 @@ export default function App() {
         ) : (
           // --- ONGLET STATS & SCIENCE (Complet) ---
           <div className="space-y-6 animate-in slide-in-from-left-4">
-           
+            
             {/* 1. DASHBOARD STATS */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
               <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6"><BarChart3 className="text-indigo-600"/> Votre Progression</h3>
-             
+              
               <div className="grid grid-cols-3 gap-4 mb-8">
                 <div className="text-center p-3 bg-slate-50 rounded-xl">
                   <div className="text-2xl font-black text-indigo-600">{stats ? stats.progress : 0}%</div>
@@ -1379,49 +1389,46 @@ export default function App() {
               <div className="space-y-8">
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Respect du modèle Polarisé (80/20)</h4>
-                  <PolarizationChart 
-                    low={stats && stats.intensityBuckets ? stats.intensityBuckets.low : 0} 
-                    high={stats && stats.intensityBuckets ? stats.intensityBuckets.high : 0} 
-                  />
+                  <PolarizationChart low={stats?.intensityBuckets.low || 0} high={stats?.intensityBuckets.high || 0} />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Volume Hebdomadaire (Minutes)</h4>
-                  <WeeklyVolumeChart data={stats ? stats.weeklyVolume : []} />
+                  <WeeklyVolumeChart data={stats?.weeklyVolume || []} />
                 </div>
               </div>
             </div>
 
             {/* 2. SECTION SCIENTIFIQUE */}
             <div className="bg-slate-900 text-white rounded-2xl shadow-lg p-6 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-6 opacity-10"><Brain size={120}/></div>
-             <h3 className="font-bold text-xl flex items-center gap-2 mb-6 relative z-10"><BookOpen className="text-yellow-400"/> Validation Scientifique</h3>
-             <div className="space-y-4 relative z-10">
-               <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                 <div className="flex items-start gap-3">
-                   <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Activity size={18}/></div>
-                   <div>
-                     <h4 className="font-bold text-sm">Entraînement Polarisé</h4>
-                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                       Votre plan suit la distribution des intensités de <strong>Stephen Seiler (2010)</strong>. 80% du volume est effectué à basse intensité (Zone 1/2) pour maximiser la densité mitochondriale sans fatigue excessive.
-                     </p>
-                   </div>
-                 </div>
-               </div>
-
-               <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                 <div className="flex items-start gap-3">
-                   <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><TrendingUp size={18}/></div>
-                   <div>
-                     <h4 className="font-bold text-sm">RPE (Ressenti)</h4>
-                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                       Nous utilisons l'échelle <strong>Borg CR-10</strong> modifiée par Foster pour quantifier la charge interne. C'est souvent plus fiable que la fréquence cardiaque seule.
-                     </p>
-                   </div>
-                 </div>
-               </div>
-
-               {userData.strengthDaysPerWeek > 0 && (
+               <div className="absolute top-0 right-0 p-6 opacity-10"><Brain size={120}/></div>
+               <h3 className="font-bold text-xl flex items-center gap-2 mb-6 relative z-10"><BookOpen className="text-yellow-400"/> Validation Scientifique</h3>
+               <div className="space-y-4 relative z-10">
                  <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3">
+                     <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Activity size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">Entraînement Polarisé</h4>
+                       <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                         Votre plan suit la distribution des intensités de <strong>Stephen Seiler (2010)</strong>. 80% du volume est effectué à basse intensité (Zone 1/2) pour maximiser la densité mitochondriale sans fatigue excessive.
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+
+                 <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3">
+                     <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><TrendingUp size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">RPE (Ressenti)</h4>
+                       <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                         Nous utilisons l'échelle <strong>Borg CR-10</strong> modifiée par Foster pour quantifier la charge interne. C'est souvent plus fiable que la fréquence cardiaque seule.
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {userData.strengthDaysPerWeek > 0 && (
+                   <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
                     <div className="flex items-start gap-3">
                       <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400"><Dumbbell size={18}/></div>
                       <div>
@@ -1432,27 +1439,27 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-               )}
+                 )}
                  
-               <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                 <div className="flex items-start gap-3">
-                   <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Target size={18}/></div>
-                   <div>
-                     <h4 className="font-bold text-sm">Modèle de Banister</h4>
-                     <BanisterChart duration={userData.durationWeeks} />
-                     <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
-                       Modélisation théorique de la performance (Forme = Fitness - Fatigue). Notez le pic de forme prévu à la fin grâce à l'affûtage.
-                     </p>
+                 <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3">
+                     <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Target size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">Modèle de Banister</h4>
+                       <BanisterChart duration={userData.durationWeeks} />
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                         Modélisation théorique de la performance (Forme = Fitness - Fatigue). Notez le pic de forme prévu à la fin grâce à l'affûtage.
+                       </p>
+                     </div>
                    </div>
                  </div>
-               </div>
 
                   <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
                    <div className="flex items-start gap-3">
                      <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><BarChart3 size={18}/></div>
                      <div>
                        <h4 className="font-bold text-sm">Charge TRIMP (Training Impulse)</h4>
-                       <TrimpChart volumeData={stats ? stats.weeklyVolume : []} />
+                       <TrimpChart volumeData={stats?.weeklyVolume || []} />
                        <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
                          Quantification de la charge interne hebdomadaire pour assurer une surcharge progressive sans blessure.
                        </p>
@@ -1460,22 +1467,22 @@ export default function App() {
                    </div>
                  </div>
                  
-               {userData.strengthDaysPerWeek > 0 && (
-                   <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                     <div className="flex items-start gap-3">
-                       <div className="bg-rose-500/20 p-2 rounded-lg text-rose-400"><Dna size={18}/></div>
-                       <div>
-                         <h4 className="font-bold text-sm">Mécanismes Moléculaires</h4>
-                         <InterferenceDiagram />
-                         <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
-                           Schématisation du conflit potentiel entre les voies de signalisation AMPk (endurance) et mTOR (hypertrophie).
-                         </p>
+                 {userData.strengthDaysPerWeek > 0 && (
+                     <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                       <div className="flex items-start gap-3">
+                         <div className="bg-rose-500/20 p-2 rounded-lg text-rose-400"><Dna size={18}/></div>
+                         <div>
+                           <h4 className="font-bold text-sm">Mécanismes Moléculaires</h4>
+                           <InterferenceDiagram />
+                           <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                             Schématisation du conflit potentiel entre les voies de signalisation AMPk (endurance) et mTOR (hypertrophie).
+                           </p>
+                         </div>
                        </div>
                      </div>
-                   </div>
-               )}
+                 )}
 
-             </div>
+               </div>
             </div>
           </div>
         )}
@@ -1487,6 +1494,11 @@ export default function App() {
             <p className="text-slate-500 font-medium text-sm">Créé par <span className="bg-gradient-to-r from-indigo-600 to-rose-500 bg-clip-text text-transparent font-black">Charles Viennot</span></p>
             <p className="text-slate-400 text-xs mt-1 uppercase tracking-widest flex items-center justify-center gap-2"><GraduationCap size={12} /> Étudiant en Ingénierie du Sport</p>
             <button onClick={resetPlan} className="mt-4 text-[10px] text-slate-300 hover:text-rose-400 flex items-center justify-center gap-1 w-full transition-colors"><RotateCcw size={10}/> Réinitialiser les données</button>
+            {DONATION_URL && (
+                <a href={DONATION_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-yellow-400 text-yellow-900 rounded-full text-xs font-bold shadow-sm hover:bg-yellow-300 transition-colors">
+                    <Coffee size={14}/> Soutenir le projet
+                </a>
+            )}
         </footer>
       )}
       </div>
