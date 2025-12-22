@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, ChevronRight
 } from 'lucide-react';
 
 // ==================================================================================
@@ -183,7 +183,7 @@ const ExerciseModal = ({ exercise, onClose }) => {
                 onError={() => setImgError(true)}
             />
             
-            {/* Bouton Fermer (X) - Amélioré et bien visible */}
+            {/* Bouton Fermer (X) */}
             <button 
                 onClick={onClose} 
                 className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"
@@ -191,7 +191,7 @@ const ExerciseModal = ({ exercise, onClose }) => {
                 <X size={20}/>
             </button>
 
-            {/* Cartouche Titre ÉPURÉ - Plus de cadre, juste le texte avec ombre */}
+            {/* Cartouche Titre ÉPURÉ */}
             <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
                 <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                     {exercise.name}
@@ -202,7 +202,7 @@ const ExerciseModal = ({ exercise, onClose }) => {
             </div>
         </div>
 
-        {/* Content (Défile si besoin) */}
+        {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto">
             
             {/* Protocole */}
@@ -239,7 +239,7 @@ const ExerciseModal = ({ exercise, onClose }) => {
                 </p>
             </div>
 
-            {/* Bouton de validation (Fixe en bas de la modale) */}
+            {/* Bouton de validation */}
             <button 
                 onClick={onClose} 
                 className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-indigo-200 mt-2"
@@ -252,7 +252,350 @@ const ExerciseModal = ({ exercise, onClose }) => {
   );
 };
 
-// --- VISUALISATION SÉANCE ---
+// --- NOUVEAU COMPOSANT : INTERACTIVE INTERFERENCE DIAGRAM ---
+const InteractiveInterference = () => {
+    const [scenario, setScenario] = useState('far'); // 'close' or 'far'
+
+    return (
+        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4">
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                <button 
+                    onClick={() => setScenario('close')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'close' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Séances Rapprochées (&lt;6h)
+                </button>
+                <button 
+                    onClick={() => setScenario('far')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'far' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Séances Espacées (&gt;24h)
+                </button>
+            </div>
+
+            <div className="relative h-48 bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center p-4">
+                {/* Background Grid */}
+                <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '10px 10px'}}></div>
+
+                <div className="relative z-10 w-full flex justify-between items-center">
+                    {/* Pathway 1: Endurance (AMPk) */}
+                    <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? 'translate-x-8 scale-110' : 'translate-x-0'}`}>
+                        <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/50 mb-2 animate-pulse">
+                            <Zap size={20} />
+                        </div>
+                        <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Cardio (AMPk)</div>
+                        {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>}
+                    </div>
+
+                    {/* Conflict Zone */}
+                    {scenario === 'close' && (
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300">
+                             <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-rose-500/50">
+                                <X size={24} className="text-white"/>
+                             </div>
+                             <div className="bg-rose-600 text-white text-[9px] font-bold px-2 py-1 rounded mt-2">INTERFÉRENCE</div>
+                        </div>
+                    )}
+
+                    {/* Pathway 2: Muscle (mTOR) */}
+                    <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? '-translate-x-8 scale-90 opacity-50' : 'translate-x-0'}`}>
+                        <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/50 mb-2 animate-pulse">
+                            <Dumbbell size={20} />
+                        </div>
+                        <div className="text-[10px] font-bold text-rose-300 uppercase tracking-widest">Muscle (mTOR)</div>
+                         {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>}
+                    </div>
+                </div>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
+                {scenario === 'close' 
+                    ? "⚠️ Le signal 'Cardio' bloque la construction musculaire. Vos gains en force sont compromis."
+                    : "✅ Les deux signaux ont le temps de s'exprimer. Vous progressez en endurance ET en muscle."
+                }
+            </p>
+        </div>
+    );
+};
+
+// --- COMPOSANT : STAT CARD ---
+const StatCard = ({ label, value, unit, icon: Icon, color }) => (
+    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+        <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+            <div className="text-2xl font-black text-slate-800 flex items-baseline gap-1">
+                {value} <span className="text-xs font-medium text-slate-400">{unit}</span>
+            </div>
+        </div>
+        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+            <Icon size={20} />
+        </div>
+    </div>
+);
+
+// --- COMPOSANT : JAUGE DE POLARISATION ---
+const PolarizationChart = ({ low, high }) => {
+    const total = low + high || 1;
+    const lowPercent = Math.round((low / total) * 100);
+    const highPercent = Math.round((high / total) * 100);
+    
+    return (
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex justify-between items-end mb-4">
+                <h4 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={18} className="text-indigo-500"/> Polarisation (Prévisionnelle)</h4>
+                <span className="text-xs font-medium text-slate-400">Cible: 80/20</span>
+            </div>
+            
+            <div className="flex h-6 w-full rounded-full overflow-hidden bg-slate-100 relative">
+                {/* Zone Low */}
+                <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000 relative group" 
+                    style={{ width: `${lowPercent}%` }}
+                >
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Endurance</span>
+                </div>
+                {/* Zone High */}
+                <div 
+                    className="h-full bg-gradient-to-r from-rose-500 to-rose-600 transition-all duration-1000 relative group" 
+                    style={{ width: `${highPercent}%` }}
+                >
+                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Intensité</span>
+                </div>
+                
+                {/* Marqueur cible 80% */}
+                <div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: '80%'}}></div>
+                <div className="absolute -bottom-1 left-[80%] -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-slate-800"></div>
+            </div>
+
+            <div className="flex justify-between mt-2 text-xs font-bold">
+                 <div className="text-emerald-600">{lowPercent}% <span className="text-[10px] font-normal text-slate-400">Volume</span></div>
+                 <div className="text-rose-600">{highPercent}% <span className="text-[10px] font-normal text-slate-400">Intensité</span></div>
+            </div>
+        </div>
+    );
+};
+
+// --- COMPOSANT : VOLUME HEBDOMADAIRE INTERACTIF (PLANIFIÉ VS RÉALISÉ) ---
+const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
+  const [selectedWeek, setSelectedWeek] = useState(null);
+
+  if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">Générez votre plan pour voir les données.</div>;
+  
+  const max = Math.max(...plannedData, 1);
+
+  return (
+    <div className="space-y-4">
+        <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative">
+            {/* Grille de fond pour repères visuels */}
+            <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10">
+                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
+                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
+                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
+            </div>
+
+            {plannedData.map((val, i) => (
+                <div 
+                    key={i} 
+                    className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10"
+                    onClick={() => setSelectedWeek(i === selectedWeek ? null : i)}
+                >
+                
+                {/* Conteneur de la barre */}
+                <div className="w-full relative flex items-end justify-center h-full rounded-t-sm overflow-hidden">
+                     {/* Barre Planifiée (Fond gris clair/fantôme) - Toujours visible */}
+                    <div 
+                        className="w-full absolute bottom-0 bg-slate-200 border-t border-x border-slate-300 transition-all duration-500 rounded-t-sm"
+                        style={{ height: `${(val / max) * 100}%` }}
+                    ></div>
+
+                    {/* Barre Réalisée (Couleur de remplissage) */}
+                    <div 
+                        className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-500'}`}
+                        style={{ height: `${(realizedData[i] / max) * 100}%` }}
+                    ></div>
+                </div>
+
+                <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
+                </div>
+            ))}
+        </div>
+        
+        {/* Detail Box */}
+        {selectedWeek !== null && (
+             <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-800 animate-in slide-in-from-top-2 shadow-sm">
+                 <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold flex items-center gap-1"><Clock size={12}/> Semaine {selectedWeek + 1}</span>
+                    <span className="bg-white px-2 py-0.5 rounded shadow-sm text-[10px] font-black border border-indigo-100">{realizedData[selectedWeek]} / {plannedData[selectedWeek]} min</span>
+                 </div>
+                 <div className="text-slate-600 italic">
+                    {realizedData[selectedWeek] >= plannedData[selectedWeek] 
+                        ? "🎉 Objectif de volume atteint ! Bravo." 
+                        : "L'objectif est la barre grise. Continuez vos efforts !"}
+                 </div>
+             </div>
+        )}
+    </div>
+  );
+};
+
+// --- COMPOSANT : MODÈLE DE BANISTER ---
+const BanisterChart = ({ duration }) => {
+    if (!duration) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>;
+
+    const weeks = Array.from({length: duration + 2}, (_, i) => i); 
+    const data = weeks.map(w => {
+        const ramp = w / duration; 
+        const fitness = 20 + (ramp * 60); 
+        const fatigue = w >= duration ? 15 : 10 + (ramp * 70) + (Math.sin(w)*10); 
+        const form = fitness - fatigue + 30; 
+        return { w, fitness, fatigue, form };
+    });
+
+    return (
+        <div className="w-full h-48 flex items-end gap-1 mt-6 relative bg-white/50 rounded-xl p-2 border border-slate-100 overflow-hidden">
+             <div className="absolute inset-0 flex flex-col justify-between p-4 opacity-10 pointer-events-none">
+                 <div className="w-full h-px bg-slate-900"></div>
+                 <div className="w-full h-px bg-slate-900"></div>
+                 <div className="w-full h-px bg-slate-900"></div>
+             </div>
+             
+             {data.map((d, i) => (
+                 <div key={i} className="flex-1 flex flex-col justify-end h-full relative group">
+                     {/* Forme (Point Vert) */}
+                     <div className="w-2 h-2 bg-green-500 rounded-full absolute left-1/2 -translate-x-1/2 transition-all duration-500 z-20 shadow-sm shadow-green-200" style={{ bottom: `${Math.min(d.form, 95)}%` }}></div>
+                     {/* Fitness (Barre Bleue) */}
+                     <div className="w-1 bg-indigo-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 rounded-t-full" style={{ height: `${Math.min(d.fitness, 95)}%` }}></div>
+                     {/* Fatigue (Barre Rouge) */}
+                      <div className="w-1 bg-rose-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 -translate-x-[2px] rounded-t-full" style={{ height: `${Math.min(d.fatigue, 95)}%` }}></div>
+                 </div>
+             ))}
+             
+             <div className="absolute top-2 left-2 flex flex-wrap gap-3 text-[9px] font-bold bg-white/80 p-1 rounded backdrop-blur-sm z-30 border border-slate-100 shadow-sm">
+                 <span className="text-green-600 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Forme</span>
+                 <span className="text-indigo-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-indigo-300"></div> Fitness</span>
+                 <span className="text-rose-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-rose-300"></div> Fatigue</span>
+             </div>
+        </div>
+    );
+};
+
+// --- COMPOSANT : CHARGE TRIMP INTERACTIF ---
+const TrimpChart = ({ plannedData, realizedData }) => {
+    const [selectedPoint, setSelectedPoint] = useState(null);
+
+    if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>;
+
+    // Calcul TRIMP (Planifié)
+    const trimpData = plannedData.map((val, i) => {
+        const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8;
+        return Math.round(val * intensityFactor);
+    });
+
+    // Calcul TRIMP (Réalisé)
+    const realizedTrimpData = realizedData.map((val, i) => {
+        const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8;
+        return Math.round(val * intensityFactor);
+    });
+
+    const maxTrimp = Math.max(...trimpData, 1);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative">
+                 {/* Grille de fond */}
+                <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10">
+                    <div className="w-full h-px bg-purple-900 border-dashed border-t"></div>
+                    <div className="w-full h-px bg-purple-900 border-dashed border-t"></div>
+                    <div className="w-full h-px bg-purple-900 border-dashed border-t"></div>
+                </div>
+
+                {trimpData.map((trimp, i) => (
+                    <div 
+                        key={i} 
+                        className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10"
+                        onClick={() => setSelectedPoint(i === selectedPoint ? null : i)}
+                    >
+                        {/* Conteneur de barre */}
+                        <div className="w-full relative flex items-end justify-center h-full rounded-t-sm overflow-hidden">
+                             {/* Barre Planifiée (Fond gris) */}
+                            <div 
+                                className="w-full absolute bottom-0 bg-slate-200 border-t border-x border-slate-300 opacity-50 rounded-t-sm"
+                                style={{ height: `${(trimp / maxTrimp) * 80 + 10}%` }}
+                            ></div>
+
+                            {/* Barre Réalisée (Couleur) */}
+                            <div 
+                                className={`w-full absolute bottom-0 transition-all duration-1000 z-10 rounded-t-sm ${selectedPoint === i ? 'bg-purple-600' : 'bg-gradient-to-t from-purple-300 to-purple-500'}`}
+                                style={{ height: `${(realizedTrimpData[i] / maxTrimp) * 80 + 10}%` }}
+                            ></div>
+                        </div>
+
+                        <span className={`text-[9px] font-mono z-20 ${selectedPoint === i ? 'text-purple-600 font-bold scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Detail Box */}
+            {selectedPoint !== null && (
+                 <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-xs text-purple-800 animate-in slide-in-from-top-2 flex items-start gap-2 shadow-sm">
+                     <Flame size={16} className="shrink-0 mt-0.5 text-purple-600"/>
+                     <div>
+                        <span className="font-bold block mb-1">Charge Semaine {selectedPoint + 1}</span>
+                        <div className="flex gap-4 mb-1 text-[10px]">
+                             <span className="text-slate-500">Prévu: {trimpData[selectedPoint]}</span>
+                             <span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint]}</span>
+                        </div>
+                        <div className="text-slate-600 italic">
+                        {realizedTrimpData[selectedPoint] > trimpData[selectedPoint] 
+                            ? "Attention, charge plus élevée que prévu." 
+                            : "Charge maîtrisée."}
+                        </div>
+                     </div>
+                 </div>
+            )}
+        </div>
+    );
+};
+
+// --- COMPOSANT : GUIDE D'INSTALLATION ---
+const InstallGuide = ({ onClose }) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative animate-in zoom-in-95 duration-300">
+            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+                <X size={24}/>
+            </button>
+            <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600">
+                <Smartphone size={32} />
+            </div>
+            <h3 className="text-2xl font-black text-slate-800 mb-2">Installer l'App 📱</h3>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                Pour une meilleure expérience, ajoutez C-Lab Performance à votre écran d'accueil. C'est gratuit et sans téléchargement !
+            </p>
+            
+            <div className="space-y-4 text-left bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">1</span>
+                    <span className="text-sm text-slate-700">Appuyez sur le bouton <strong>Partager</strong> <Share size={14} className="inline ml-1"/> dans Safari.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">2</span>
+                    <span className="text-sm text-slate-700">Faites défiler vers le bas.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">3</span>
+                    <span className="text-sm text-slate-700">Sélectionnez <strong>"Sur l'écran d'accueil"</strong>.</span>
+                </div>
+            </div>
+
+            <button onClick={onClose} className="mt-6 w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition">
+                C'est compris !
+            </button>
+        </div>
+    </div>
+);
+
+
+// --- VISUALISATION SÉANCE (Mini-Graph) ---
 const WorkoutViz = ({ structure, intensity }) => {
   let bars = [];
   const color = intensity === 'high' ? 'bg-rose-500' : intensity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500';
@@ -278,129 +621,7 @@ const RpeBadge = ({ level }) => {
     return <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${color} border border-white/20`}>RPE {level}/10</div>;
 };
 
-// --- GRAPHIQUES ---
-const PolarizationChart = ({ low, high }) => {
-  const total = low + high;
-  if (total === 0) return <div className="text-xs text-slate-400 italic">Aucune donnée</div>;
-  const lowPercent = Math.round((low / total) * 100);
-  const highPercent = Math.round((high / total) * 100);
-  return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex h-4 w-full rounded-full overflow-hidden bg-slate-100">
-        <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${lowPercent}%` }}></div>
-        <div className="bg-rose-500 transition-all duration-700" style={{ width: `${highPercent}%` }}></div>
-      </div>
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-        <span className="text-emerald-600">Endurance ({lowPercent}%)</span>
-        <span className="text-rose-600">Intensité ({highPercent}%)</span>
-      </div>
-    </div>
-  );
-};
-
-const WeeklyVolumeChart = ({ data }) => {
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex items-end justify-between h-24 gap-1 mt-4">
-      {data.map((val, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-          <div 
-            className="w-full bg-indigo-100 hover:bg-indigo-200 rounded-t-sm transition-all duration-500 relative"
-            style={{ height: `${(val / max) * 100}%` }}
-          >
-             <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-               {val}'
-             </div>
-          </div>
-          <span className="text-[9px] text-slate-400">S{i + 1}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const BanisterChart = ({ duration }) => {
-    const weeks = Array.from({length: duration + 2}, (_, i) => i); 
-    const data = weeks.map(w => {
-        const ramp = w / duration; 
-        const fitness = 20 + (ramp * 60); 
-        const fatigue = w >= duration ? 15 : 10 + (ramp * 70) + (Math.sin(w)*10); 
-        const form = fitness - fatigue + 30; 
-        return { w, fitness, fatigue, form };
-    });
-
-    return (
-        <div className="w-full h-48 flex items-end gap-1 mt-6 relative bg-white/50 rounded-xl p-2 border border-slate-100">
-             <div className="absolute inset-0 flex flex-col justify-between p-4 opacity-10">
-                 <div className="w-full h-px bg-slate-900"></div>
-                 <div className="w-full h-px bg-slate-900"></div>
-                 <div className="w-full h-px bg-slate-900"></div>
-             </div>
-             
-             {data.map((d, i) => (
-                 <div key={i} className="flex-1 flex flex-col justify-end h-full relative group">
-                     <div className="w-2 h-2 bg-green-500 rounded-full absolute left-1/2 -translate-x-1/2 transition-all duration-500 z-20 shadow-sm shadow-green-200" style={{ bottom: `${d.form}%` }}></div>
-                     <div className="w-1 bg-indigo-400/30 absolute left-1/2 -translate-x-1/2 bottom-0 rounded-t-full" style={{ height: `${d.fitness}%` }}></div>
-                      <div className="w-1 bg-rose-400/30 absolute left-1/2 -translate-x-1/2 bottom-0 -translate-x-[2px] rounded-t-full" style={{ height: `${d.fatigue}%` }}></div>
-                 </div>
-             ))}
-             
-             <div className="absolute top-2 left-2 flex flex-wrap gap-3 text-[9px] font-bold">
-                 <span className="text-green-600 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Forme (Perf)</span>
-                 <span className="text-indigo-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-indigo-300"></div> Fitness (CTL)</span>
-                 <span className="text-rose-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-rose-300"></div> Fatigue (ATL)</span>
-             </div>
-        </div>
-    );
-};
-
-const TrimpChart = ({ volumeData }) => {
-    const max = Math.max(...volumeData, 1);
-    return (
-        <div className="flex items-end justify-between h-32 gap-1 mt-4">
-            {volumeData.map((val, i) => {
-                const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8;
-                const trimp = Math.round(val * intensityFactor);
-                return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                    <div className="w-full bg-gradient-to-t from-indigo-500 to-purple-500 rounded-t-sm transition-all duration-1000 relative hover:opacity-80" style={{ height: `${(val / max) * 80 + 10}%` }}>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">TRIMP: {trimp}</div>
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-mono">S{i + 1}</span>
-                </div>
-            )})}
-        </div>
-    );
-};
-
-const InterferenceDiagram = () => (
-    <div className="relative h-40 bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-center overflow-hidden mt-4">
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 100" preserveAspectRatio="none">
-             <path d="M50 30 Q 150 80 250 30" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeDasharray="5,5" />
-        </svg>
-        <div className="absolute left-4 top-4 bottom-4 w-1/3 pr-4 flex flex-col justify-between items-end text-right z-10">
-            <div className="text-xs font-bold text-indigo-600 flex items-center gap-1">Run <Footprints size={12}/></div>
-            <div className="text-[9px] text-slate-400 bg-white/80 px-1 rounded">Stress Métabolique</div>
-            <div className="text-xs font-black text-white bg-indigo-500 px-2 py-1 rounded shadow-sm shadow-indigo-200">AMPk ⚡</div>
-            <div className="text-[9px] text-indigo-400 font-bold italic">Biogenèse Mito.</div>
-        </div>
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center bg-white/90 p-2 rounded-full border border-rose-100 shadow-sm">
-            <div className="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full mb-1">INTERFÉRENCE</div>
-            <div className="w-16 h-0.5 bg-slate-200 relative">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-rose-500 rounded-full"></div>
-            </div>
-            <div className="text-[8px] text-slate-400 text-center mt-1 leading-tight">Si séances<br/>trop proches</div>
-        </div>
-        <div className="absolute right-4 top-4 bottom-4 w-1/3 pl-4 flex flex-col justify-between items-start z-10">
-            <div className="text-xs font-bold text-rose-600 flex items-center gap-1"><Dumbbell size={12}/> Muscu</div>
-            <div className="text-[9px] text-slate-400 bg-white/80 px-1 rounded">Tension Mécanique</div>
-            <div className="text-xs font-black text-white bg-rose-500 px-2 py-1 rounded shadow-sm shadow-rose-200">mTOR 🧬</div>
-            <div className="text-[9px] text-rose-400 font-bold italic">Synthèse Protéique</div>
-        </div>
-    </div>
-);
-
-// --- LOGIQUE PLANNING HEBDO (SLOT FILLING AVEC DOUBLE) ---
+// --- LOGIQUE PLANNING HEBDO ---
 const getRecommendedSchedule = (sessions) => {
     const runs = sessions.filter(s => s.category === 'run');
     const gyms = sessions.filter(s => s.category === 'strength');
@@ -516,7 +737,7 @@ export default function App() {
             const parsed = JSON.parse(saved);
             // Conversion spéciale pour les Sets
             if (key === 'completedSessions') return new Set(parsed.completedSessions || []);
-            if (key === 'completedExercises') return new Set(parsed.completedExercises || []); // NOUVEAU
+            if (key === 'completedExercises') return new Set(parsed.completedExercises || []); 
             return parsed[key] !== undefined ? parsed[key] : defaultValue;
         }
     } catch (e) {
@@ -552,7 +773,8 @@ export default function App() {
 
   const [step, setStep] = useState(() => loadState('step', 'input'));
   const [activeTab, setActiveTab] = useState(() => loadState('activeTab', 'plan'));
-  
+  const [showInstallGuide, setShowInstallGuide] = useState(false); // État pour le guide d'installation
+
   const defaultUserData = {
     name: "Charles",
     weight: 75,
@@ -629,17 +851,27 @@ export default function App() {
   const stats = useMemo(() => {
     if (plan.length === 0) return null;
     let totalSessions = 0, completedCount = 0, totalKm = 0;
-    let intensityBuckets = { low: 0, high: 0 };
+    
+    // Stats de réalisation (ce qui est fait)
     const weeklyVolume = plan.map(() => 0);
+    
+    // Stats de planification (ce qui est prévu)
+    const plannedWeeklyVolume = plan.map(() => 0);
+    let plannedIntensityBuckets = { low: 0, high: 0 };
+
     plan.forEach((week, i) => {
       week.sessions.forEach(session => {
+        // Calcul du prévu
+        plannedWeeklyVolume[i] += session.durationMin;
+        if (session.intensity === 'low') plannedIntensityBuckets.low += session.durationMin;
+        else plannedIntensityBuckets.high += session.durationMin;
+        
+        // Calcul du réalisé
         totalSessions++;
         const isDone = completedSessions.has(session.id);
         if (isDone) {
           completedCount++;
           weeklyVolume[i] += session.durationMin;
-          if (session.intensity === 'low') intensityBuckets.low += session.durationMin;
-          else intensityBuckets.high += session.durationMin;
           if (session.category === 'run' && session.distance) {
             const km = parseFloat(session.distance);
             if(!isNaN(km)) totalKm += km;
@@ -647,7 +879,17 @@ export default function App() {
         }
       });
     });
-    return { progress: totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0, totalKm: totalKm.toFixed(1), sessionsDone: completedCount, totalSessions, intensityBuckets, weeklyVolume };
+
+    return { 
+        progress: totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0, 
+        totalKm: totalKm.toFixed(1), 
+        sessionsDone: completedCount, 
+        totalSessions, 
+        // On renvoie les stats "prévues" pour les graphiques de science pour qu'ils soient remplis dès le début
+        intensityBuckets: plannedIntensityBuckets, 
+        weeklyVolume: plannedWeeklyVolume, // Données PLANIFIÉES pour l'onglet Science
+        realizedWeeklyVolume: weeklyVolume // Données RÉALISÉES pour le suivi
+    };
   }, [plan, completedSessions]);
 
   const toggleSession = (id) => {
@@ -954,40 +1196,46 @@ export default function App() {
 
       {step === 'result' && (
         <div className="bg-slate-900 text-white p-6 rounded-b-3xl shadow-lg sticky top-0 z-50">
-            <div className="max-w-3xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-3">
-                <button onClick={() => setStep('input')} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition" title="Retour Menu">
-                    <ArrowLeft size={20} />
-                </button>
-                <div>
-                    <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
-                    <FlaskConical size={12}/> C-Lab Performance
-                    </div>
-                    <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
-                </div>
-            </div>
+            <div className="max-w-3xl mx-auto flex justify-between items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                  <button onClick={() => setStep('input')} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition" title="Retour Menu">
+                      <ArrowLeft size={20} />
+                  </button>
+                  <div>
+                      <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
+                      <FlaskConical size={12}/> C-Lab Performance
+                      </div>
+                      <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
+                  </div>
+              </div>
             
             {/* AJOUT : Bouton Don dans le Header */}
-            {DONATION_URL && (
-                <a 
-                  href={DONATION_URL} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-lg text-xs font-bold shadow-md transition-all active:scale-95 animate-pulse"
-                >
-                    <Coffee size={14}/> <span>Soutenir</span>
-                </a>
-            )}
+            <div className="flex items-center gap-2 ml-auto">
+              {DONATION_URL && (
+                  <a 
+                    href={DONATION_URL} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-xl text-sm font-black shadow-md transition-all active:scale-95 animate-pulse"
+                  >
+                      <Coffee size={18}/> <span>Soutenir</span>
+                  </a>
+              )}
+               <button onClick={() => setShowInstallGuide(true)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white transition" title="Installer l'app">
+                    <Smartphone size={18} />
+                </button>
 
-            <div className="flex items-center gap-2">
                 <button onClick={() => generateICS(plan)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white transition" title="Ajouter au calendrier">
                     <CalendarIcon size={18} />
                 </button>
-                <div className="flex bg-slate-800 rounded-lg p-1">
-                    <button onClick={() => setActiveTab('plan')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Programme</button>
-                    <button onClick={() => setActiveTab('stats')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${activeTab === 'stats' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Science</button>
-                </div>
             </div>
+            
+             {/* Navigation Mobile Fixe en bas - Adaptation Header */}
+             <div className="flex w-full sm:w-auto bg-slate-800 rounded-lg p-1">
+                    <button onClick={() => setActiveTab('plan')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Programme</button>
+                    <button onClick={() => setActiveTab('stats')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'stats' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Science</button>
+              </div>
+
             </div>
         </div>
       )}
@@ -998,6 +1246,11 @@ export default function App() {
         {modalExercise && (
             <ExerciseModal exercise={modalExercise} onClose={() => setModalExercise(null)} />
         )}
+
+        {/* GUIDE INSTALLATION */}
+        {showInstallGuide && (
+            <InstallGuide onClose={() => setShowInstallGuide(false)} />
+        )}
         
         {/* BOUTON FLOTTANT DONATION (MOBILE) */}
         {step === 'result' && DONATION_URL && (
@@ -1005,10 +1258,10 @@ export default function App() {
                 href={DONATION_URL} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 sm:hidden flex items-center gap-2 font-bold text-xs"
+                className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 flex items-center gap-2 font-bold text-xs animate-bounce sm:hidden"
              >
                 <Coffee size={20}/>
-                <span className="sr-only">Soutenir</span>
+                <span>Soutenir</span>
              </a>
         )}
 
@@ -1283,7 +1536,7 @@ export default function App() {
                                             )}
                                     </div>
 
-                                    {session.paceGap > -1 && (
+                                    {session.category === 'run' && session.paceGap > -1 && (
                                         <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1">
                                             <span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span>
                                             <span className="font-black text-slate-800 text-sm">{session.paceTarget}</span>
@@ -1303,24 +1556,46 @@ export default function App() {
                                     <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
                                         <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
                                         <div className="space-y-2">
-                                            {session.exercises.map((exo, idx) => (
-                                                <div 
-                                                    key={idx} 
-                                                    onClick={() => setModalExercise(exo)}
-                                                    className="bg-white p-2 rounded border border-slate-200 flex justify-between items-center hover:bg-indigo-50 hover:border-indigo-200 transition cursor-help"
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <HelpCircle size={14} className="text-slate-300"/>
-                                                        <div>
-                                                            <div className="font-bold text-xs text-slate-800">{exo.name}</div>
-                                                            <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
+                                            {session.exercises.map((exo, idx) => {
+                                                const uniqueExerciseId = `${session.id}-ex-${idx}`;
+                                                const isChecked = completedExercises.has(uniqueExerciseId);
+                                                
+                                                return (
+                                                    <div 
+                                                        key={idx} 
+                                                        className={`bg-white p-2 rounded border transition-colors flex items-center gap-3
+                                                            ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}
+                                                        `}
+                                                    >
+                                                        {/* Checkbox Interactive */}
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleExercise(uniqueExerciseId);
+                                                            }}
+                                                            className="cursor-pointer"
+                                                        >
+                                                            {isChecked ? 
+                                                                <CheckSquare size={20} className="text-green-500" /> : 
+                                                                <Square size={20} className="text-slate-300 hover:text-indigo-400" />
+                                                            }
+                                                        </div>
+
+                                                        <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise(exo)}>
+                                                            <div className="flex items-center gap-2">
+                                                                <HelpCircle size={14} className="text-slate-300"/>
+                                                                <div className={isChecked ? 'opacity-50' : ''}>
+                                                                    <div className="font-bold text-xs text-slate-800">{exo.name}</div>
+                                                                    <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                RPE {exo.rpe}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="text-[9px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">RPE {exo.rpe}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                         <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1">
                                             <CheckCircle size={12} /> Valider la séance
@@ -1389,11 +1664,17 @@ export default function App() {
               <div className="space-y-8">
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Respect du modèle Polarisé (80/20)</h4>
-                  <PolarizationChart low={stats?.intensityBuckets.low || 0} high={stats?.intensityBuckets.high || 0} />
+                  <PolarizationChart 
+                    low={stats?.intensityBuckets.low || 0} 
+                    high={stats?.intensityBuckets.high || 0} 
+                  />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Volume Hebdomadaire (Minutes)</h4>
-                  <WeeklyVolumeChart data={stats?.weeklyVolume || []} />
+                  <WeeklyVolumeChart 
+                    plannedData={stats?.weeklyVolume || []} 
+                    realizedData={stats?.realizedWeeklyVolume || []} 
+                  />
                 </div>
               </div>
             </div>
@@ -1459,7 +1740,10 @@ export default function App() {
                      <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><BarChart3 size={18}/></div>
                      <div>
                        <h4 className="font-bold text-sm">Charge TRIMP (Training Impulse)</h4>
-                       <TrimpChart volumeData={stats?.weeklyVolume || []} />
+                       <TrimpChart 
+                            plannedData={stats?.weeklyVolume || []} 
+                            realizedData={stats?.realizedWeeklyVolume || []} 
+                       />
                        <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
                          Quantification de la charge interne hebdomadaire pour assurer une surcharge progressive sans blessure.
                        </p>
@@ -1469,16 +1753,11 @@ export default function App() {
                  
                  {userData.strengthDaysPerWeek > 0 && (
                      <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                       <div className="flex items-start gap-3">
-                         <div className="bg-rose-500/20 p-2 rounded-lg text-rose-400"><Dna size={18}/></div>
-                         <div>
-                           <h4 className="font-bold text-sm">Mécanismes Moléculaires</h4>
-                           <InterferenceDiagram />
-                           <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
-                             Schématisation du conflit potentiel entre les voies de signalisation AMPk (endurance) et mTOR (hypertrophie).
-                           </p>
-                         </div>
-                       </div>
+                       <h4 className="font-bold text-sm mb-3">Mécanismes Moléculaires (Interactif)</h4>
+                       <InteractiveInterference />
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                         Testez l'impact de l'espacement des séances sur vos gains musculaires et cardio.
+                       </p>
                      </div>
                  )}
 
