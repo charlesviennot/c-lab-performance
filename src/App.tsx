@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft
 } from 'lucide-react';
 
 // ==================================================================================
@@ -42,6 +42,10 @@ const formatPace = (val) => {
 };
 
 const calcDist = (minutes, pacePerKm) => (minutes / pacePerKm).toFixed(1) + " km";
+
+const generateICS = (plan) => {
+    alert("L'export Calendrier sera disponible dans la prochaine version !");
+};
 
 const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor) => {
     const effectiveGoalTime = goalTime * difficultyFactor;
@@ -255,22 +259,18 @@ const STRENGTH_PROTOCOLS = {
 };
 
 // --- COMPOSANT MODAL EXERCICE ---
-const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) => {
+const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex }) => {
   const [imgError, setImgError] = useState(false);
   const [setsStatus, setSetsStatus] = useState([]);
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(null);
   
-  const isRun = category === 'run'; // Détection si c'est du Run
-
-  // Ref pour le son
+  const isRun = category === 'run';
   const audioRef = useRef(null);
   
-  // Initialisation des séries
   useEffect(() => {
     if (exercise && !isRun) {
-        // Tenter d'extraire le nombre de séries
         let setsCount = 1;
         if (typeof exercise.sets === 'number') {
             setsCount = exercise.sets;
@@ -282,7 +282,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
     }
   }, [exercise, isRun]);
 
-  // Logique du Timer
   useEffect(() => {
     let interval = null;
     if (isTimerRunning && timer > 0) {
@@ -290,13 +289,11 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
             setTimer((prev) => prev - 1);
         }, 1000);
     } else if (timer === 0 && isTimerRunning) {
-        // Fin du timer
         setIsTimerRunning(false);
         setActiveSetIndex(null);
         if (audioRef.current) {
             audioRef.current.play().catch(e => console.log("Audio play failed", e));
         }
-        // Vibration si sur mobile
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
     return () => clearInterval(interval);
@@ -309,8 +306,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
     setSetsStatus(newStatus);
 
     if (isChecking) {
-        // Lancer le timer si on vient de cocher (repos)
-        // Sauf si c'est la dernière série
         if (index < setsStatus.length - 1) {
             const restSeconds = parseRestTime(exercise.rest);
             if (restSeconds > 0) {
@@ -320,7 +315,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
             }
         }
     } else {
-        // Si on décoche, on annule le timer si c'était celui en cours
         if (activeSetIndex === index) {
             setIsTimerRunning(false);
             setTimer(0);
@@ -330,7 +324,14 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
   };
 
   const handleComplete = () => {
-      onComplete(exerciseId);
+      // Si Run : on valide la session complète
+      if (isRun) {
+          onComplete(exerciseId); 
+      } else {
+          // Si Muscu : on valide l'exercice spécifique
+          const uniqueExerciseId = `${exerciseId}-ex-${exerciseIndex}`;
+          onComplete(uniqueExerciseId, true);
+      }
       onClose();
   };
 
@@ -342,161 +343,87 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete }) 
 
   if (!exercise) return null;
 
-  // Si c'est du Run, on n'utilise pas l'image du tout
   const imageSrc = !isRun && (exercise.imageUrl && exercise.imageUrl !== "" && !imgError) 
     ? exercise.imageUrl 
     : `https://source.unsplash.com/800x600/?fitness,${exercise.imageKeyword}`;
 
   const objectFitClass = "object-cover opacity-90";
+  
+  // Vérifier si toutes les séries sont faites pour afficher le bouton (Muscu seulement)
+  const allSetsDone = !isRun && setsStatus.length > 0 && setsStatus.every(Boolean);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col relative">
-        
-        {/* Élément Audio invisible pour le Bip */}
         <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
-        {/* --- HEADER DIFFÉRENT SI RUN OU MUSCU --- */}
         {isRun ? (
-            // HEADER RUN (ÉPURÉ SANS IMAGE)
             <div className="bg-slate-50 p-6 border-b border-slate-100 relative">
-                 <button 
-                    onClick={onClose} 
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"
-                >
-                    <X size={24}/>
-                </button>
+                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"><X size={24}/></button>
                 <div className="flex items-center gap-2 mb-2">
                      <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Footprints size={20}/></div>
                      <span className="text-xs font-bold uppercase text-indigo-500 tracking-wider">Course à Pied</span>
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 leading-tight">
-                    {exercise.name}
-                </h3>
-                <div className="flex items-center gap-2 mt-2 text-sm text-slate-500 font-medium">
-                    <Clock size={16}/> {exercise.sets} • {exercise.reps}
-                </div>
+                <h3 className="text-2xl font-black text-slate-800 leading-tight">{exercise.name}</h3>
+                <div className="flex items-center gap-2 mt-2 text-sm text-slate-500 font-medium"><Clock size={16}/> {exercise.sets} • {exercise.reps}</div>
             </div>
         ) : (
-            // HEADER MUSCU (AVEC IMAGE)
             <div className="h-56 bg-slate-100 relative overflow-hidden bg-white shrink-0 group">
-                <img 
-                    src={imageSrc}
-                    alt={exercise.name}
-                    className={`w-full h-full ${objectFitClass}`}
-                    onError={() => setImgError(true)}
-                />
-                
-                <button 
-                    onClick={onClose} 
-                    className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"
-                >
-                    <X size={20}/>
-                </button>
-
+                <img src={imageSrc} alt={exercise.name} className={`w-full h-full ${objectFitClass}`} onError={() => setImgError(true)} />
+                <button onClick={onClose} className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"><X size={20}/></button>
                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
-                    <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                        {exercise.name}
-                    </h3>
-                    <span className="text-white/60 text-xs font-bold uppercase tracking-wider mt-1 block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                        {exercise.sets.toString().includes('bloc') || exercise.sets.toString().includes('temps') ? exercise.sets : `${exercise.sets} Séries`} x {exercise.reps}
-                    </span>
+                    <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{exercise.name}</h3>
+                    <span className="text-white/60 text-xs font-bold uppercase tracking-wider mt-1 block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{exercise.sets.toString().includes('bloc') || exercise.sets.toString().includes('temps') ? exercise.sets : `${exercise.sets} Séries`} x {exercise.reps}</span>
                 </div>
             </div>
         )}
 
-        {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto">
-            
-            {/* --- GESTION DES SÉRIES & TIMER (SEULEMENT SI PAS RUN) --- */}
             {!isRun && (
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                        <Activity size={16} className="text-indigo-500"/> Suivi de séance
-                    </h4>
-                    {isTimerRunning && (
-                        <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse shadow-md shadow-indigo-200">
-                            <Timer size={14}/> {formatTime(timer)}
-                        </div>
-                    )}
-                </div>
-
+                <div className="flex justify-between items-center mb-4"><h4 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className="text-indigo-500"/> Suivi de séance</h4>{isTimerRunning && (<div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse shadow-md shadow-indigo-200"><Timer size={14}/> {formatTime(timer)}</div>)}</div>
                 <div className="space-y-3">
                     {setsStatus.map((isDone, idx) => (
                         <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
-                                    {idx + 1}
-                                </span>
-                                <span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>
-                                    {exercise.reps} reps
-                                </span>
-                            </div>
-                            
-                            <button 
-                                onClick={() => toggleSet(idx)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}
-                            >
-                                {isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}
-                            </button>
+                            <div className="flex items-center gap-3"><span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span><span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span></div>
+                            <button onClick={() => toggleSet(idx)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}>{isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}</button>
                         </div>
                     ))}
                 </div>
             </div>
             )}
 
-            {/* Protocole (Infos statiques) */}
             <div className="flex gap-4">
-                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
-                    <div className="text-xs text-slate-400 font-bold uppercase">Repos</div>
-                    <div className="text-lg font-black text-slate-700">{exercise.rest}</div>
-                </div>
-                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center shadow-sm">
-                    <div className="text-xs text-rose-400 font-bold uppercase">Intensité</div>
-                    <div className="text-lg font-black text-rose-600">RPE {exercise.rpe}</div>
-                </div>
+                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm"><div className="text-xs text-slate-400 font-bold uppercase">Repos</div><div className="text-lg font-black text-slate-700">{exercise.rest}</div></div>
+                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center shadow-sm"><div className="text-xs text-rose-400 font-bold uppercase">Intensité</div><div className="text-lg font-black text-rose-600">RPE {exercise.rpe}</div></div>
             </div>
 
-            {/* Consigne Coach */}
             <div>
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Brain size={18}/></div>
-                    <h4 className="font-bold text-slate-800">Consigne Technique</h4>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    {exercise.instructions}
-                </p>
+                <div className="flex items-center gap-2 mb-2"><div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Brain size={18}/></div><h4 className="font-bold text-slate-800">Consigne Technique</h4></div>
+                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{exercise.instructions}</p>
             </div>
 
-            {/* Focus Science */}
             <div>
-                 <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-emerald-100 p-1.5 rounded-lg text-emerald-600"><Target size={18}/></div>
-                    <h4 className="font-bold text-slate-800">Objectif Physiologique</h4>
-                </div>
-                <p className="text-xs font-medium text-slate-500">
-                    {exercise.note}
-                </p>
+                 <div className="flex items-center gap-2 mb-2"><div className="bg-emerald-100 p-1.5 rounded-lg text-emerald-600"><Target size={18}/></div><h4 className="font-bold text-slate-800">Objectif Physiologique</h4></div>
+                <p className="text-xs font-medium text-slate-500">{exercise.note}</p>
             </div>
 
-            {/* Bouton de validation */}
-            <button 
-                onClick={handleComplete} 
-                className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-indigo-200 mt-2"
-            >
-                Terminer l'exercice
-            </button>
+            {/* Bouton de validation conditionnel */}
+            {(isRun || allSetsDone) && (
+                <button 
+                    onClick={handleComplete} 
+                    className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 mt-2 animate-in slide-in-from-bottom-2 fade-in"
+                >
+                    {isRun ? "Terminer la séance" : "Valider l'exercice"}
+                </button>
+            )}
         </div>
       </div>
     </div>
   );
 };
 
-// ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge)
-// Je conserve les composants existants, pas de changement nécessaire ici pour cette demande spécifique.
-// Pour la lisibilité et éviter les erreurs de référence, je les inclus :
-
+// ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge remain unchanged)
 const InteractiveInterference = () => {
     const [scenario, setScenario] = useState('far'); 
     return (
@@ -745,88 +672,44 @@ export default function App() {
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [expandedSession, setExpandedSession] = useState(null);
 
-  // Fonction pour déplacer un jour dans le planning (LOGIQUE INVERSÉE)
-  const moveDay = (weekIndex, direction, dayIndex) => {
-      const newPlan = [...plan];
-      const week = newPlan.find(w => w.weekNumber === weekIndex);
-      
-      if (!week) return;
+  // Fonction pour déplacer un jour dans le planning avec un bouton "Cliquer pour déplacer"
+  const [swapSelection, setSwapSelection] = useState(null);
 
-      const newSchedule = [...week.schedule];
-      const targetIndex = dayIndex + direction;
+  const handleSwapRequest = (weekIdx, dayIdx) => {
+      if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) {
+          setSwapSelection(null);
+          return;
+      }
+      if (!swapSelection) {
+          setSwapSelection({ weekIdx, dayIdx });
+          return;
+      }
+      if (swapSelection.weekIdx === weekIdx) {
+          handleSwap(weekIdx, swapSelection.dayIdx, dayIdx);
+          setSwapSelection(null);
+      } else {
+          setSwapSelection({ weekIdx, dayIdx });
+      }
+  };
 
-      // Vérifier les limites
-      if (targetIndex < 0 || targetIndex >= newSchedule.length) return;
-
-      // Swap des contenus
-      const temp = newSchedule[dayIndex];
-      newSchedule[dayIndex] = newSchedule[targetIndex];
-      newSchedule[targetIndex] = temp;
-      
-      // Réassigner les noms des jours corrects après le swap (Lundi reste Lundi)
-      const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-      newSchedule.forEach((day, idx) => {
-          day.day = dayNames[idx];
+  const handleSwap = (weekIdx, sourceDayIdx, targetDayIdx) => {
+      const newPlan = plan.map(w => {
+        if (w.weekNumber !== weekIdx) return w;
+        const newSchedule = [...w.schedule];
+        const source = newSchedule[sourceDayIdx];
+        const target = newSchedule[targetDayIdx];
+        const tempActivity = source.activity;
+        const tempFocus = source.focus;
+        const tempSessionIds = source.sessionIds;
+        source.activity = target.activity;
+        source.focus = target.focus;
+        source.sessionIds = target.sessionIds;
+        target.activity = tempActivity;
+        target.focus = tempFocus;
+        target.sessionIds = tempSessionIds;
+        return { ...w, schedule: newSchedule };
       });
-
-      week.schedule = newSchedule;
       setPlan(newPlan);
-  };
-
-  // Fonction pour gérer le drop (réorganiser le planning)
-  const handleDrop = (weekIndex, dropIndex) => {
-    if (!draggedItem) return;
-    
-    // Si on est sur la même semaine
-    if (draggedItem.weekIndex === weekIndex) {
-        // CRUCIAL: Créer une copie profonde pour déclencher le re-render
-        const newPlan = plan.map(w => {
-            if (w.weekNumber !== weekIndex) return w;
-            
-            // On clone l'objet semaine ET le tableau schedule
-            const newSchedule = [...w.schedule];
-            
-            // Swap simple des éléments dans le tableau
-            const draggedContent = newSchedule[draggedItem.dayIndex];
-            const targetContent = newSchedule[dropIndex];
-            
-            // Échange des contenus (sauf le nom du jour qui doit rester fixe: Lundi, Mardi...)
-            const tempActivity = draggedContent.activity;
-            const tempFocus = draggedContent.focus;
-            const tempSessionIds = draggedContent.sessionIds;
-
-            // On met le contenu du target dans le dragged
-            draggedContent.activity = targetContent.activity;
-            draggedContent.focus = targetContent.focus;
-            draggedContent.sessionIds = targetContent.sessionIds;
-
-            // On met le contenu du dragged dans le target
-            targetContent.activity = tempActivity;
-            targetContent.focus = tempFocus;
-            targetContent.sessionIds = tempSessionIds;
-            
-            return { ...w, schedule: newSchedule };
-        });
-
-        setPlan(newPlan);
-        setDraggedItem(null);
-    } else {
-        alert("Vous ne pouvez déplacer des jours qu'au sein de la même semaine pour l'instant.");
-        setDraggedItem(null);
-    }
-  };
-
-  // Drag and drop state
-  const [draggedItem, setDraggedItem] = useState(null);
-
-  const handleDragStart = (e, weekIndex, dayIndex) => {
-     setDraggedItem({ weekIndex, dayIndex });
-     e.dataTransfer.effectAllowed = 'move';
-     // Mobile fix? HTML5 DnD is poor on mobile, rely on tap/arrows for mobile
-  };
-
-  const handleDragOver = (e) => {
-      e.preventDefault();
   };
 
   const stats = useMemo(() => {
@@ -870,8 +753,14 @@ export default function App() {
       setCompletedExercises(newSet);
   };
 
-  const handleSessionCompleteFromModal = (sessionId) => {
-       if (!completedSessions.has(sessionId)) { toggleSession(sessionId); }
+  const handleSessionCompleteFromModal = (sessionId, isExercise = false) => {
+       if (isExercise) {
+           toggleExercise(sessionId); 
+       } else {
+           if (!completedSessions.has(sessionId)) {
+               toggleSession(sessionId);
+           }
+       }
   };
 
   const adaptDifficulty = (weekNum, action) => {
@@ -983,6 +872,7 @@ export default function App() {
        
       {step === 'input' && (
         <div className="bg-slate-900 relative overflow-hidden text-white pt-12 pb-24 rounded-b-[3rem] shadow-2xl">
+            {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
             <div className="absolute -top-20 -right-20 bg-indigo-600 rounded-full w-64 h-64 blur-3xl opacity-30"></div>
             <div className="absolute top-20 -left-20 bg-rose-600 rounded-full w-64 h-64 blur-3xl opacity-20"></div>
@@ -1022,9 +912,15 @@ export default function App() {
                 </div>
             </div>
             
+            {/* AJOUT : Bouton Don dans le Header */}
             <div className="flex items-center gap-2 ml-auto">
               {DONATION_URL && (
-                  <a href={DONATION_URL} target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-xl text-sm font-black shadow-md transition-all active:scale-95 animate-pulse">
+                  <a 
+                    href={DONATION_URL} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-xl text-sm font-black shadow-md transition-all active:scale-95 animate-pulse"
+                  >
                       <Coffee size={18}/> <span>Soutenir</span>
                   </a>
               )}
@@ -1037,6 +933,7 @@ export default function App() {
                 </button>
             </div>
             
+             {/* Navigation Mobile Fixe en bas - Adaptation Header */}
              <div className="flex w-full sm:w-auto bg-slate-800 rounded-lg p-1">
                     <button onClick={() => setActiveTab('plan')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Programme</button>
                     <button onClick={() => setActiveTab('stats')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'stats' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Science</button>
@@ -1048,22 +945,31 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 mt-6 flex-1 w-full relative z-20 pb-20">
         
+        {/* MODAL EXERCICE */}
         {modalExercise && (
             <ExerciseModal 
                 exercise={modalExercise.data} 
-                exerciseId={modalExercise.id} 
-                category={modalExercise.category}
+                exerciseId={modalExercise.id} // ID de session parent pour validation
+                category={modalExercise.category} // NEW: Pass category
+                exerciseIndex={modalExercise.index} // Pass the index
                 onClose={() => setModalExercise(null)} 
-                onComplete={(sessionId) => handleSessionCompleteFromModal(sessionId)}
+                onComplete={(uniqueId, isExercise) => handleSessionCompleteFromModal(uniqueId, isExercise)}
             />
         )}
 
+        {/* GUIDE INSTALLATION */}
         {showInstallGuide && (
             <InstallGuide onClose={() => setShowInstallGuide(false)} />
         )}
         
+        {/* BOUTON FLOTTANT DONATION (MOBILE) */}
         {step === 'result' && DONATION_URL && (
-             <a href={DONATION_URL} target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 flex items-center gap-2 font-bold text-xs animate-bounce sm:hidden">
+             <a 
+                href={DONATION_URL} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 flex items-center gap-2 font-bold text-xs animate-bounce sm:hidden"
+             >
                 <Coffee size={20}/>
                 <span>Soutenir</span>
              </a>
@@ -1076,47 +982,90 @@ export default function App() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* MODIFICATION : INPUT -> SELECT POUR L'OBJECTIF */}
               <div className="space-y-4">
                 <label className="text-xs font-bold text-slate-400 uppercase">Objectif (min)</label>
                 <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition">
-                    <button onClick={() => setUserData({...userData, goalTime: Math.max(25, userData.goalTime - 1)})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
+                    <button 
+                        onClick={() => setUserData({...userData, goalTime: Math.max(25, userData.goalTime - 1)})}
+                        className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"
+                    >
+                        <Minus size={20} />
+                    </button>
                     <div className="flex-1 text-center relative">
-                        <input type="number" value={userData.goalTime} onChange={(e) => setUserData({...userData, goalTime: Number(e.target.value)})} className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 outline-none p-2"/>
+                        <input 
+                            type="number" 
+                            value={userData.goalTime} 
+                            onChange={(e) => setUserData({...userData, goalTime: Number(e.target.value)})} 
+                            className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 outline-none p-2"
+                        />
                         <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
                     </div>
-                    <button onClick={() => setUserData({...userData, goalTime: userData.goalTime + 1})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
+                    <button 
+                        onClick={() => setUserData({...userData, goalTime: userData.goalTime + 1})}
+                        className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"
+                    >
+                        <Plus size={20} />
+                    </button>
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">Allure cible : {formatPace(userData.goalTime/10)}/km</p>
               </div>
 
+              {/* MODIFICATION : INPUT -> SELECT POUR LA DURÉE */}
               <div className="space-y-4">
                 <label className="text-xs font-bold text-slate-400 uppercase">Durée Prépa</label>
                 <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-slate-300 transition">
-                    <button onClick={() => setUserData({...userData, durationWeeks: Math.max(4, userData.durationWeeks - 1)})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Minus size={20} /></button>
+                    <button 
+                        onClick={() => setUserData({...userData, durationWeeks: Math.max(4, userData.durationWeeks - 1)})}
+                        className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                    >
+                        <Minus size={20} />
+                    </button>
                     <div className="flex-1 text-center relative">
-                        <input type="number" value={userData.durationWeeks} onChange={(e) => setUserData({...userData, durationWeeks: Number(e.target.value)})} className="w-full bg-transparent text-center font-black text-3xl text-slate-700 outline-none p-2"/>
+                        <input 
+                            type="number" 
+                            value={userData.durationWeeks} 
+                            onChange={(e) => setUserData({...userData, durationWeeks: Number(e.target.value)})} 
+                            className="w-full bg-transparent text-center font-black text-3xl text-slate-700 outline-none p-2"
+                        />
                         <Clock className="absolute top-1/2 -translate-y-1/2 right-2 text-slate-200 opacity-50 pointer-events-none" size={40} />
                     </div>
-                    <button onClick={() => setUserData({...userData, durationWeeks: userData.durationWeeks + 1})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Plus size={20} /></button>
+                    <button 
+                        onClick={() => setUserData({...userData, durationWeeks: userData.durationWeeks + 1})}
+                        className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                    >
+                        <Plus size={20} />
+                    </button>
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-2">{userData.durationWeeks} semaines de progression</p>
               </div>
             </div>
 
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-               <label className="flex justify-between text-xs font-bold text-slate-500 uppercase mb-4"><span>Progressivité (Douceur de départ)</span><span className="text-emerald-600">+{userData.progressionStart}%</span></label>
+               <label className="flex justify-between text-xs font-bold text-slate-500 uppercase mb-4">
+                   <span>Progressivité (Douceur de départ)</span>
+                   <span className="text-emerald-600">+{userData.progressionStart}%</span>
+               </label>
                <input type="range" min="0" max="30" step="5" value={userData.progressionStart} onChange={e => setUserData({...userData, progressionStart: Number(e.target.value)})} className="w-full h-2 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"/>
-               <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-medium"><span>0% (Brutal)</span><span>15% (Optimal)</span><span>30% (Retour blessure)</span></div>
+               <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-medium">
+                   <span>0% (Brutal)</span>
+                   <span>15% (Optimal)</span>
+                   <span>30% (Retour blessure)</span>
+               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-3">
                  <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2"><Footprints size={14}/> Runs / Semaine</label>
-                 <div className="flex gap-2">{[2,3,4].map(n => (<button key={n} onClick={() => setUserData({...userData, runDaysPerWeek: n})} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${userData.runDaysPerWeek === n ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-indigo-300'}`}>{n}</button>))}</div>
+                 <div className="flex gap-2">
+                   {[2,3,4].map(n => (<button key={n} onClick={() => setUserData({...userData, runDaysPerWeek: n})} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${userData.runDaysPerWeek === n ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-indigo-300'}`}>{n}</button>))}
+                 </div>
                </div>
                <div className="space-y-3">
                  <label className="text-xs font-bold text-rose-400 uppercase flex items-center gap-2"><Dumbbell size={14}/> Muscu / Semaine</label>
-                 <div className="flex gap-2 flex-wrap">{[0,1,2,3,4,5].map(n => (<button key={n} onClick={() => setUserData({...userData, strengthDaysPerWeek: n})} className={`flex-1 py-3 min-w-[30px] rounded-xl text-sm font-bold transition ${userData.strengthDaysPerWeek === n ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-rose-300'}`}>{n}</button>))}</div>
+                 <div className="flex gap-2 flex-wrap">
+                   {[0,1,2,3,4,5].map(n => (<button key={n} onClick={() => setUserData({...userData, strengthDaysPerWeek: n})} className={`flex-1 py-3 min-w-[30px] rounded-xl text-sm font-bold transition ${userData.strengthDaysPerWeek === n ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-rose-300'}`}>{n}</button>))}
+                 </div>
                </div>
             </div>
 
@@ -1124,8 +1073,14 @@ export default function App() {
                 <div className="space-y-3">
                     <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Target size={14}/> Objectif Musculation</label>
                     <div className="flex gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                        <button onClick={() => setUserData({...userData, strengthFocus: 'force'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'force' ? 'bg-white shadow-md text-rose-600 border border-rose-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Force & Puissance</span><span className="text-[9px] font-normal opacity-70">5 reps • Repos long • Lourd</span></button>
-                        <button onClick={() => setUserData({...userData, strengthFocus: 'hypertrophy'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'hypertrophy' ? 'bg-white shadow-md text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Hypertrophie & Volume</span><span className="text-[9px] font-normal opacity-70">12 reps • Repos court • Pump</span></button>
+                        <button onClick={() => setUserData({...userData, strengthFocus: 'force'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'force' ? 'bg-white shadow-md text-rose-600 border border-rose-100' : 'text-slate-400 hover:bg-white/50'}`}>
+                            <span>Force & Puissance</span>
+                            <span className="text-[9px] font-normal opacity-70">5 reps • Repos long • Lourd</span>
+                        </button>
+                        <button onClick={() => setUserData({...userData, strengthFocus: 'hypertrophy'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'hypertrophy' ? 'bg-white shadow-md text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:bg-white/50'}`}>
+                            <span>Hypertrophie & Volume</span>
+                            <span className="text-[9px] font-normal opacity-70">12 reps • Repos court • Pump</span>
+                        </button>
                     </div>
                 </div>
             )}
@@ -1160,7 +1115,7 @@ export default function App() {
              <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4 flex items-start gap-3 text-xs text-indigo-800 animate-in fade-in">
                 <Move size={16} className="shrink-0 mt-0.5"/>
                 <p>
-                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en glissant les jours ou avec les flèches. 
+                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours.
                     <br/><span className="opacity-70 italic">Note: L'optimisation scientifique (Interférence) n'est plus garantie si vous déplacez les séances clés.</span>
                 </p>
              </div>
@@ -1168,17 +1123,35 @@ export default function App() {
 
             {plan.map((week, weekIdx) => {
                 const isOpen = expandedWeek === week.weekNumber;
-                const sessionsToShow = filteredSessionIds ? week.sessions.filter(s => filteredSessionIds.includes(s.id)) : week.sessions;
+                
+                // Filtre d'affichage pour le "Focus Jour"
+                const sessionsToShow = filteredSessionIds 
+                    ? week.sessions.filter(s => filteredSessionIds.includes(s.id))
+                    : week.sessions;
+
+                // Vérifier si TOUTES les séances de la semaine sont complétées
                 const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
-                const headerBgClass = allSessionsCompleted ? 'bg-green-50 border-green-200' : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
-                const headerIconClass = allSessionsCompleted ? 'bg-green-600 text-white' : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
+
+                // Indicateur visuel pour l'en-tête de semaine (Vert si fini)
+                const headerBgClass = allSessionsCompleted 
+                    ? 'bg-green-50 border-green-200' 
+                    : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
+                
+                const headerIconClass = allSessionsCompleted
+                    ? 'bg-green-600 text-white'
+                    : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
 
                 return (
                   <div key={week.weekNumber} className={`rounded-xl shadow-sm border overflow-hidden transition-all ${allSessionsCompleted ? 'border-green-200' : 'border-slate-100 bg-white'} ${isOpen ? 'ring-2 ring-indigo-500' : ''}`}>
                     <button onClick={() => setExpandedWeek(isOpen ? null : week.weekNumber)} className={`w-full p-4 flex items-center justify-between ${headerBgClass}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>{allSessionsCompleted ? <Check size={18}/> : week.weekNumber}</div>
-                        <div className="text-left"><h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>{allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}</div>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>
+                            {allSessionsCompleted ? <Check size={18}/> : week.weekNumber}
+                        </div>
+                        <div className="text-left">
+                            <h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>
+                            {allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}
+                        </div>
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
@@ -1189,37 +1162,72 @@ export default function App() {
                         {week.schedule && week.schedule.length > 0 && (
                             <div className="mx-1 mb-4 border-2 border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
                                 <div className="bg-slate-100 px-4 py-2 flex items-center justify-between border-b border-slate-200">
-                                    <div className="flex items-center gap-2"><Calendar size={14} className="text-slate-500"/><h4 className="text-xs font-bold text-slate-600 uppercase tracking-wide">Planning Idéal (Glisser pour modifier)</h4></div>
-                                    {filteredSessionIds && (<button onClick={() => setFilteredSessionIds(null)} className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:underline"><RotateCcw size={10}/> Voir tout</button>)}
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={14} className="text-slate-500"/>
+                                        <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wide">Planning Idéal (Cliquer pour échanger)</h4>
+                                    </div>
+                                    {filteredSessionIds && (
+                                        <button onClick={() => setFilteredSessionIds(null)} className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:underline">
+                                            <RotateCcw size={10}/> Voir tout
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="p-3 grid grid-cols-1 gap-2 text-xs">
+                                    {/* CLIC & SWAP */}
                                     {week.schedule.map((day, i) => {
-                                        const isSelected = filteredSessionIds && day.sessionIds !== null && day.sessionIds.length === filteredSessionIds.length && day.sessionIds.every((val, index) => val === filteredSessionIds[index]);
+                                        const isSelected = filteredSessionIds && 
+                                            day.sessionIds !== null && 
+                                            day.sessionIds.length === filteredSessionIds.length &&
+                                            day.sessionIds.every((val, index) => val === filteredSessionIds[index]);
+                                        
                                         const hasActivity = day.sessionIds.length > 0;
                                         const isDayCompleted = hasActivity && day.sessionIds.every(id => completedSessions.has(id));
+
+                                        // Si ce jour est sélectionné pour l'échange
+                                        const isSwapSource = swapSelection && swapSelection.weekIdx === week.weekNumber && swapSelection.dayIdx === i;
 
                                         return (
                                             <div 
                                                 key={i} 
-                                                className={`flex items-center justify-between p-2 rounded border transition cursor-move ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}
-                                                ${draggedItem?.weekIdx === week.weekNumber && draggedItem?.dayIdx === i ? 'opacity-50 border-dashed border-indigo-400' : ''}
+                                                className={`flex items-center justify-between p-2 rounded border transition select-none
+                                                    ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 
+                                                      isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' :
+                                                      'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}
+                                                    ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''}
+                                                    ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}
                                                 `}
-                                                draggable="true"
-                                                onDragStart={(e) => handleDragStart(e, weekIdx, i)}
-                                                onDragOver={handleDragOver}
-                                                onDrop={(e) => handleDrop(weekIdx, i)}
-                                                onClick={() => { if (hasActivity) { handleDayClick(day.sessionIds); }}}
+                                                onClick={() => {
+                                                    // SI MODE SWAP ACTIF
+                                                    if (swapSelection) {
+                                                        handleSwapRequest(week.weekNumber, i);
+                                                    }
+                                                    // SINON COMPORTEMENT NORMAL (FILTRE)
+                                                    else if (hasActivity) {
+                                                        const idsToFilter = day.sessionIds;
+                                                        handleDayClick(idsToFilter);
+                                                    }
+                                                }}
                                             >
-                                                <div className="flex items-center gap-2">
-                                                     <div className="flex flex-col text-slate-300">
-                                                        <button onClick={(e) => { e.stopPropagation(); moveDay(week.weekNumber, -1, i); }}><ArrowUp size={10} className="hover:text-indigo-500"/></button>
-                                                        <button onClick={(e) => { e.stopPropagation(); moveDay(week.weekNumber, 1, i); }}><ArrowDown size={10} className="hover:text-indigo-500"/></button>
-                                                     </div>
+                                                <div className="flex items-center gap-3">
+                                                     {/* Bouton Swap */}
+                                                     <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            handleSwapRequest(week.weekNumber, i); 
+                                                        }}
+                                                        className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                                        title="Déplacer ce jour"
+                                                     >
+                                                        <ArrowRightLeft size={12}/>
+                                                     </button>
+
                                                      <span className={`font-bold w-16 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{day.day}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 overflow-hidden">
                                                      {isDayCompleted && !isSelected && <CheckCircle size={10} className="text-green-500 shrink-0"/>}
-                                                     <span className={`font-medium truncate ${isSelected ? 'text-indigo-100' : day.activity.includes('Repos') ? 'text-slate-400' : 'text-indigo-600'}`}>{day.activity}</span>
+                                                     <span className={`font-medium truncate ${isSelected ? 'text-indigo-100' : day.activity.includes('Repos') ? 'text-slate-400' : 'text-indigo-600'}`}>
+                                                        {day.activity}
+                                                    </span>
                                                 </div>
                                             </div>
                                         );
@@ -1234,25 +1242,54 @@ export default function App() {
                             const isExpandedSession = expandedSession === session.id;
                             return (
                                 <div key={session.id} className={`rounded-lg border transition animate-in slide-in-from-bottom-2 ${isDone ? 'bg-slate-50 border-green-200 opacity-80' : 'bg-white border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
+                                
                                 <div onClick={() => { if(session.exercises) { setExpandedSession(isExpandedSession ? null : session.id); } else { toggleSession(session.id); } }} className="p-3 cursor-pointer">
                                     <div className="flex justify-between items-center mb-3">
                                         <div className="flex items-center gap-2">
                                         {isDone ? <CheckCircle size={16} className="text-green-500"/> : session.category === 'run' ? <Footprints size={16} className="text-indigo-500"/> : <Dumbbell size={16} className="text-rose-500"/>}
                                         <span className={`font-bold text-xs uppercase ${isDone ? 'text-green-700' : 'text-slate-700'}`}>{session.type}</span>
                                         </div>
-                                        <div className="flex items-center gap-2"><RpeBadge level={session.rpe} /><WorkoutViz structure={session.structure} intensity={session.intensity}/></div>
+                                        <div className="flex items-center gap-2">
+                                            <RpeBadge level={session.rpe} />
+                                            <WorkoutViz structure={session.structure} intensity={session.intensity}/>
+                                        </div>
                                     </div>
+
                                     <div className="flex flex-col gap-2">
                                             <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
                                                 <div className="flex items-center gap-1"><Clock size={12}/> {session.duration}</div>
-                                                {session.category === 'run' && session.distance && (<div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-1.5 rounded"><Ruler size={12}/> {session.distance}</div>)}
+                                                {session.category === 'run' && session.distance && (
+                                                    <div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-1.5 rounded"><Ruler size={12}/> {session.distance}</div>
+                                                )}
                                             </div>
+                                            
                                             <p className="text-xs text-slate-600 leading-relaxed">{session.description}</p>
-                                            {!isDone && session.planningAdvice && (<div className="flex items-start gap-1.5 mt-1 bg-amber-50 p-2 rounded-lg text-[10px] text-amber-800 border border-amber-100"><Info size={12} className="shrink-0 mt-0.5"/><span><strong>Conseil :</strong> {session.planningAdvice}</span></div>)}
+                                            
+                                            {/* Conseil Planning */}
+                                            {!isDone && session.planningAdvice && (
+                                                <div className="flex items-start gap-1.5 mt-1 bg-amber-50 p-2 rounded-lg text-[10px] text-amber-800 border border-amber-100">
+                                                    <Info size={12} className="shrink-0 mt-0.5"/>
+                                                    <span><strong>Conseil :</strong> {session.planningAdvice}</span>
+                                                </div>
+                                            )}
                                     </div>
-                                    {session.paceGap > -1 && (<div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span><span className="font-black text-slate-800 text-sm">{session.paceTarget}</span><span className="text-[9px] text-slate-400">min/km</span></div>)}
-                                    {session.exercises && !isDone && (<div className="mt-2 text-center text-[10px] text-slate-400 font-medium">{session.category === 'run' ? "Cliquez pour voir la séance ▼" : "Cliquez pour le suivi série ▼"}</div>)}
+
+                                    {session.category === 'run' && session.paceGap > -1 && (
+                                        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1">
+                                            <span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span>
+                                            <span className="font-black text-slate-800 text-sm">{session.paceTarget}</span>
+                                            <span className="text-[9px] text-slate-400">min/km</span>
+                                        </div>
+                                    )}
+                                    
+                                    {session.exercises && !isDone && (
+                                        <div className="mt-2 text-center text-[10px] text-slate-400 font-medium">
+                                            {session.category === 'run' ? "Cliquez pour voir la séance ▼" : "Cliquez pour le suivi série ▼"}
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* DETAIL EXERCICES (MUSCU OU RUN) - INTERACTIF */}
                                 {isExpandedSession && session.exercises && !isDone && (
                                     <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
                                         <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
@@ -1260,13 +1297,31 @@ export default function App() {
                                             {session.exercises.map((exo, idx) => {
                                                 const uniqueExerciseId = `${session.id}-ex-${idx}`;
                                                 const isChecked = completedExercises.has(uniqueExerciseId);
+                                                
                                                 return (
-                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}`}>
-                                                        {/* Checkbox Interactive */}
-                                                        <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
-                                                            {isChecked ? <CheckSquare size={20} className="text-green-500" /> : <Square size={20} className="text-slate-300 hover:text-indigo-400" />}
+                                                    <div 
+                                                        key={idx} 
+                                                        className={`bg-white p-2 rounded border transition-colors flex items-center gap-3
+                                                            ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}
+                                                        `}
+                                                    >
+                                                        {/* Checkbox Interactive (Seulement pour Muscu) */}
+                                                        {session.category !== 'run' && (
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleExercise(uniqueExerciseId);
+                                                            }}
+                                                            className="cursor-pointer"
+                                                        >
+                                                            {isChecked ? 
+                                                                <CheckSquare size={20} className="text-green-500" /> : 
+                                                                <Square size={20} className="text-slate-300 hover:text-indigo-400" />
+                                                            }
                                                         </div>
-                                                        <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise({data: exo, id: session.id, category: session.category})}>
+                                                        )}
+
+                                                        <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise({data: exo, id: session.id, category: session.category, index: idx})}>
                                                             <div className="flex items-center gap-2">
                                                                 <HelpCircle size={14} className="text-slate-300"/>
                                                                 <div className={isChecked ? 'opacity-50' : ''}>
@@ -1274,34 +1329,52 @@ export default function App() {
                                                                     <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
                                                                 </div>
                                                             </div>
-                                                            <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>RPE {exo.rpe}</div>
+                                                            <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                RPE {exo.rpe}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                        <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1"><CheckCircle size={12} /> Valider la séance</button>
+                                        {/* Bouton global pour valider la séance entière (surtout utile pour Run) */}
+                                        <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1">
+                                            <CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}
+                                        </button>
                                     </div>
                                 )}
+
                                 </div>
                             );
                             })
                         ) : (
-                            <div className="p-8 text-center text-slate-400 text-xs italic animate-in fade-in">Aucune séance prévue ce jour-là. Repos ! 💤</div>
+                            <div className="p-8 text-center text-slate-400 text-xs italic animate-in fade-in">
+                                Aucune séance prévue ce jour-là. Repos ! 💤
+                            </div>
                         )}
                       </div>
                     )}
                     
+                    {/* FEEDBACK SEMAINE - SEULEMENT SI TOUT EST FINI */}
                     {isOpen && allSessionsCompleted && (
                         <div className="p-4 border-t border-green-100 bg-green-50 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
-                            <div className="flex items-center gap-2 text-green-800 text-sm font-bold"><Award size={18}/> Semaine Terminée ! Bilan ?</div>
+                            <div className="flex items-center gap-2 text-green-800 text-sm font-bold">
+                                <Award size={18}/> Semaine Terminée ! Bilan ?
+                            </div>
                             <div className="flex gap-2">
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'easier')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><ThumbsDown size={14}/> Trop dur</button>
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'keep')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 border border-green-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-green-700 transition"><CheckCircle size={14}/> Parfait</button>
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'harder')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><Zap size={14}/> Trop facile</button>
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'easier')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition">
+                                    <ThumbsDown size={14}/> Trop dur
+                                </button>
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'keep')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 border border-green-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-green-700 transition">
+                                    <CheckCircle size={14}/> Parfait
+                                </button>
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'harder')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition">
+                                    <Zap size={14}/> Trop facile
+                                </button>
                             </div>
                         </div>
                     )}
+
                   </div>
                 );
             })}
@@ -1309,58 +1382,123 @@ export default function App() {
         ) : (
           // --- ONGLET STATS & SCIENCE (Complet) ---
           <div className="space-y-6 animate-in slide-in-from-left-4">
+            
+            {/* 1. DASHBOARD STATS */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
               <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6"><BarChart3 className="text-indigo-600"/> Votre Progression</h3>
+              
               <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="text-center p-3 bg-slate-50 rounded-xl"><div className="text-2xl font-black text-indigo-600">{stats ? stats.progress : 0}%</div><div className="text-[10px] font-bold text-slate-400 uppercase">Programme</div></div>
-                <div className="text-center p-3 bg-slate-50 rounded-xl"><div className="text-2xl font-black text-slate-800">{stats ? stats.totalKm : 0}</div><div className="text-[10px] font-bold text-slate-400 uppercase">Km Courus</div></div>
-                <div className="text-center p-3 bg-slate-50 rounded-xl"><div className="text-2xl font-black text-slate-800">{stats ? stats.sessionsDone : 0}</div><div className="text-[10px] font-bold text-slate-400 uppercase">Séances</div></div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl">
+                  <div className="text-2xl font-black text-indigo-600">{stats ? stats.progress : 0}%</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Programme</div>
+                </div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl">
+                  <div className="text-2xl font-black text-slate-800">{stats ? stats.totalKm : 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Km Courus</div>
+                </div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl">
+                  <div className="text-2xl font-black text-slate-800">{stats ? stats.sessionsDone : 0}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase">Séances</div>
+                </div>
               </div>
 
               <div className="space-y-8">
-                <div><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Respect du modèle Polarisé (80/20)</h4><PolarizationChart low={stats?.intensityBuckets.low || 0} high={stats?.intensityBuckets.high || 0} /></div>
-                <div><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Volume Hebdomadaire (Minutes)</h4><WeeklyVolumeChart plannedData={stats?.weeklyVolume || []} realizedData={stats?.realizedWeeklyVolume || []} /></div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Respect du modèle Polarisé (80/20)</h4>
+                  <PolarizationChart low={stats?.intensityBuckets.low || 0} high={stats?.intensityBuckets.high || 0} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Volume Hebdomadaire (Minutes)</h4>
+                  <WeeklyVolumeChart 
+                    plannedData={stats?.weeklyVolume || []} 
+                    realizedData={stats?.realizedWeeklyVolume || []} 
+                  />
+                </div>
               </div>
             </div>
 
+            {/* 2. SECTION SCIENTIFIQUE */}
             <div className="bg-slate-900 text-white rounded-2xl shadow-lg p-6 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-6 opacity-10"><Brain size={120}/></div>
                <h3 className="font-bold text-xl flex items-center gap-2 mb-6 relative z-10"><BookOpen className="text-yellow-400"/> Validation Scientifique</h3>
                <div className="space-y-4 relative z-10">
                  <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                   <div className="flex items-start gap-3"><div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Activity size={18}/></div>
-                     <div><h4 className="font-bold text-sm">Entraînement Polarisé</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Votre plan suit la distribution des intensités de <strong>Stephen Seiler (2010)</strong>. 80% du volume est effectué à basse intensité (Zone 1/2) pour maximiser la densité mitochondriale sans fatigue excessive.</p></div>
+                   <div className="flex items-start gap-3">
+                     <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Activity size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">Entraînement Polarisé</h4>
+                       <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                         Votre plan suit la distribution des intensités de <strong>Stephen Seiler (2010)</strong>. 80% du volume est effectué à basse intensité (Zone 1/2) pour maximiser la densité mitochondriale sans fatigue excessive.
+                       </p>
+                     </div>
                    </div>
                  </div>
+
                  <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                   <div className="flex items-start gap-3"><div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><TrendingUp size={18}/></div>
-                     <div><h4 className="font-bold text-sm">RPE (Ressenti)</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Nous utilisons l'échelle <strong>Borg CR-10</strong> modifiée par Foster pour quantifier la charge interne. C'est souvent plus fiable que la fréquence cardiaque seule.</p></div>
+                   <div className="flex items-start gap-3">
+                     <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><TrendingUp size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">RPE (Ressenti)</h4>
+                       <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                         Nous utilisons l'échelle <strong>Borg CR-10</strong> modifiée par Foster pour quantifier la charge interne. C'est souvent plus fiable que la fréquence cardiaque seule.
+                       </p>
+                     </div>
                    </div>
                  </div>
+
                  {userData.strengthDaysPerWeek > 0 && (
                    <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                    <div className="flex items-start gap-3"><div className="bg-amber-500/20 p-2 rounded-lg text-amber-400"><Dumbbell size={18}/></div>
-                      <div><h4 className="font-bold text-sm">Effet d'Interférence</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Pour éviter que la muscu ne nuise au run, les séances "Jambes" sont placées de manière stratégique (éloignées des séances VMA) selon <strong>Murach & Bagley (2016)</strong>.</p></div>
+                    <div className="flex items-start gap-3">
+                      <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400"><Dumbbell size={18}/></div>
+                      <div>
+                        <h4 className="font-bold text-sm">Effet d'Interférence</h4>
+                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                          Pour éviter que la muscu ne nuise au run, les séances "Jambes" sont placées de manière stratégique (éloignées des séances VMA) selon <strong>Murach & Bagley (2016)</strong>.
+                        </p>
+                      </div>
                     </div>
                   </div>
                  )}
+                 
                  <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                   <div className="flex items-start gap-3"><div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Target size={18}/></div>
-                     <div><h4 className="font-bold text-sm">Modèle de Banister</h4><BanisterChart duration={userData.durationWeeks} /><p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Modélisation théorique de la performance (Forme = Fitness - Fatigue). Notez le pic de forme prévu à la fin grâce à l'affûtage.</p></div>
+                   <div className="flex items-start gap-3">
+                     <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Target size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">Modèle de Banister</h4>
+                       <BanisterChart duration={userData.durationWeeks} />
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                         Modélisation théorique de la performance (Forme = Fitness - Fatigue). Notez le pic de forme prévu à la fin grâce à l'affûtage.
+                       </p>
+                     </div>
                    </div>
                  </div>
+
                   <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
-                   <div className="flex items-start gap-3"><div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><BarChart3 size={18}/></div>
-                     <div><h4 className="font-bold text-sm">Charge TRIMP (Training Impulse)</h4><TrimpChart plannedData={stats?.weeklyVolume || []} realizedData={stats?.realizedWeeklyVolume || []} /><p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Quantification de la charge interne hebdomadaire pour assurer une surcharge progressive sans blessure.</p></div>
+                   <div className="flex items-start gap-3">
+                     <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><BarChart3 size={18}/></div>
+                     <div>
+                       <h4 className="font-bold text-sm">Charge TRIMP (Training Impulse)</h4>
+                       <TrimpChart 
+                            plannedData={stats?.weeklyVolume || []} 
+                            realizedData={stats?.realizedWeeklyVolume || []} 
+                       />
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                         Quantification de la charge interne hebdomadaire pour assurer une surcharge progressive sans blessure.
+                       </p>
+                     </div>
                    </div>
                  </div>
+                 
                  {userData.strengthDaysPerWeek > 0 && (
                      <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
                        <h4 className="font-bold text-sm mb-3">Mécanismes Moléculaires (Interactif)</h4>
                        <InteractiveInterference />
-                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Testez l'impact de l'espacement des séances sur vos gains musculaires et cardio.</p>
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">
+                         Testez l'impact de l'espacement des séances sur vos gains musculaires et cardio.
+                       </p>
                      </div>
                  )}
+
                </div>
             </div>
           </div>
