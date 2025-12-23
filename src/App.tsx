@@ -44,8 +44,7 @@ const formatPace = (val) => {
 const calcDist = (minutes, pacePerKm) => (minutes / pacePerKm).toFixed(1) + " km";
 
 const generateICS = (plan) => {
-    // Placeholder pour éviter les erreurs, alert() étant déconseillé
-    console.log("Export ICS demandé");
+    alert("L'export Calendrier sera disponible dans la prochaine version !");
 };
 
 const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor) => {
@@ -432,8 +431,12 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
                         <Activity size={16} className="text-indigo-500"/> Suivi de séance
                     </h4>
                     {isTimerRunning && (
-                        <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse shadow-md shadow-indigo-200">
-                            <Timer size={14}/> {formatTime(timer)}
+                        <div className="flex items-center gap-2 animate-in slide-in-from-top-2">
+                            <button onClick={() => setTimer(t => Math.max(0, t - 10))} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Minus size={14}/></button>
+                            <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-md shadow-indigo-200">
+                                <Timer size={14}/> {formatTime(timer)}
+                            </div>
+                            <button onClick={() => setTimer(t => t + 10)} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Plus size={14}/></button>
                         </div>
                     )}
                 </div>
@@ -1301,7 +1304,18 @@ export default function App() {
                                                 }}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                     <button onClick={(e) => { e.stopPropagation(); handleSwapRequest(week.weekNumber, i); }} className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`} title="Déplacer ce jour"><ArrowRightLeft size={12}/></button>
+                                                     {/* Bouton Swap */}
+                                                     <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            handleSwapRequest(week.weekNumber, i); 
+                                                        }}
+                                                        className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                                        title="Déplacer ce jour"
+                                                     >
+                                                        <ArrowRightLeft size={12}/>
+                                                     </button>
+
                                                      <span className={`font-bold w-16 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{day.day}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 overflow-hidden">
