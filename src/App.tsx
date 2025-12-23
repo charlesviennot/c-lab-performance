@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Activity, Clock, ChevronDown, ChevronUp, Award, 
   TrendingUp, Info, RotateCcw, 
@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, ChevronRight
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2
 } from 'lucide-react';
 
 // ==================================================================================
@@ -15,6 +15,29 @@ const LOGO_URL = "https://i.postimg.cc/KcQDQ1z4/Capture-d-e-cran-2025-12-08-a-02
 const DONATION_URL = "https://www.buymeacoffee.com/charles.viennot";
 // 👆👆👆 FIN DE LA ZONE DE CONFIGURATION 👆👆👆
 // ==================================================================================
+
+// --- HELPER : PARSE TIME STRING TO SECONDS ---
+const parseRestTime = (restStr) => {
+    if (!restStr || restStr === '-' || restStr === '0') return 0;
+    
+    // Si format "X min"
+    if (restStr.includes('min')) {
+        const minutes = parseInt(restStr.replace(/\D/g, ''));
+        return isNaN(minutes) ? 60 : minutes * 60;
+    }
+    // Si format "X s" ou "X sec" ou juste un nombre (supposé secondes si > 5, sinon minutes, mais restons simple)
+    if (restStr.includes('s')) {
+         const seconds = parseInt(restStr.replace(/\D/g, ''));
+         return isNaN(seconds) ? 30 : seconds;
+    }
+    
+    // Fallback : si c'est juste un chiffre, on assume minutes pour la muscu sauf si > 10 (secondes)
+    const val = parseInt(restStr);
+    if (!isNaN(val)) {
+        return val > 10 ? val : val * 60;
+    }
+    return 60; // Valeur par défaut 1 minute
+};
 
 // --- DATA : PROTOCOLES RUNNING ---
 const RUN_PROTOCOLS = {
@@ -161,6 +184,81 @@ const STRENGTH_PROTOCOLS = {
 // --- COMPOSANT MODAL EXERCICE ---
 const ExerciseModal = ({ exercise, onClose }) => {
   const [imgError, setImgError] = useState(false);
+  const [setsStatus, setSetsStatus] = useState([]);
+  const [timer, setTimer] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [activeSetIndex, setActiveSetIndex] = useState(null);
+  
+  // Ref pour le son
+  const audioRef = useRef(null);
+  
+  // Initialisation des séries
+  useEffect(() => {
+    if (exercise) {
+        // Tenter d'extraire le nombre de séries
+        let setsCount = 1;
+        if (typeof exercise.sets === 'number') {
+            setsCount = exercise.sets;
+        } else if (typeof exercise.sets === 'string') {
+            const match = exercise.sets.match(/^(\d+)/);
+            if (match) setsCount = parseInt(match[1]);
+        }
+        setSetsStatus(new Array(setsCount).fill(false));
+    }
+  }, [exercise]);
+
+  // Logique du Timer
+  useEffect(() => {
+    let interval = null;
+    if (isTimerRunning && timer > 0) {
+        interval = setInterval(() => {
+            setTimer((prev) => prev - 1);
+        }, 1000);
+    } else if (timer === 0 && isTimerRunning) {
+        // Fin du timer
+        setIsTimerRunning(false);
+        setActiveSetIndex(null);
+        if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log("Audio play failed", e));
+        }
+        // Vibration si sur mobile
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timer]);
+
+  const toggleSet = (index) => {
+    const newStatus = [...setsStatus];
+    const isChecking = !newStatus[index];
+    newStatus[index] = isChecking;
+    setSetsStatus(newStatus);
+
+    if (isChecking) {
+        // Lancer le timer si on vient de cocher (repos)
+        // Sauf si c'est la dernière série
+        if (index < setsStatus.length - 1) {
+            const restSeconds = parseRestTime(exercise.rest);
+            if (restSeconds > 0) {
+                setTimer(restSeconds);
+                setIsTimerRunning(true);
+                setActiveSetIndex(index);
+            }
+        }
+    } else {
+        // Si on décoche, on annule le timer si c'était celui en cours
+        if (activeSetIndex === index) {
+            setIsTimerRunning(false);
+            setTimer(0);
+            setActiveSetIndex(null);
+        }
+    }
+  };
+
+  const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!exercise) return null;
 
@@ -172,8 +270,11 @@ const ExerciseModal = ({ exercise, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col relative">
         
+        {/* Élément Audio invisible pour le Bip */}
+        <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
         {/* Header Image */}
         <div className="h-56 bg-slate-100 relative overflow-hidden bg-white shrink-0 group">
             <img 
@@ -205,13 +306,49 @@ const ExerciseModal = ({ exercise, onClose }) => {
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto">
             
-            {/* Protocole */}
+            {/* --- NOUVEAU : GESTION DES SÉRIES & TIMER --- */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                        <Activity size={16} className="text-indigo-500"/> Suivi de séance
+                    </h4>
+                    {isTimerRunning && (
+                        <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse shadow-md shadow-indigo-200">
+                            <Timer size={14}/> {formatTime(timer)}
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-3">
+                    {setsStatus.map((isDone, idx) => (
+                        <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
+                                    {idx + 1}
+                                </span>
+                                <span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>
+                                    {exercise.reps} reps
+                                </span>
+                            </div>
+                            
+                            <button 
+                                onClick={() => toggleSet(idx)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}
+                            >
+                                {isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Protocole (Infos statiques) */}
             <div className="flex gap-4">
-                <div className="flex-1 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
-                    <div className="text-xs text-slate-400 font-bold uppercase">Repos / Récup</div>
+                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
+                    <div className="text-xs text-slate-400 font-bold uppercase">Repos</div>
                     <div className="text-lg font-black text-slate-700">{exercise.rest}</div>
                 </div>
-                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center">
+                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center shadow-sm">
                     <div className="text-xs text-rose-400 font-bold uppercase">Intensité</div>
                     <div className="text-lg font-black text-rose-600">RPE {exercise.rpe}</div>
                 </div>
@@ -244,7 +381,7 @@ const ExerciseModal = ({ exercise, onClose }) => {
                 onClick={onClose} 
                 className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-lg shadow-indigo-200 mt-2"
             >
-                Compris, c'est parti !
+                Terminer l'exercice
             </button>
         </div>
       </div>
@@ -379,21 +516,34 @@ const PolarizationChart = ({ low, high }) => {
 const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
   const [selectedWeek, setSelectedWeek] = useState(null);
 
+  // Correction : Afficher même si les données sont à 0, pour voir la structure
   if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">Générez votre plan pour voir les données.</div>;
   
+  // Utiliser le max des données planifiées pour l'échelle, ou 1 si tout est à 0
   const max = Math.max(...plannedData, 1);
 
   return (
     <div className="space-y-4">
-        <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative">
+        {/* Légende */}
+        <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Prévu</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-sm"></div> Réalisé</div>
+        </div>
+
+        <div className="flex items-end justify-between h-32 gap-1 mt-2 px-2 relative">
             {/* Grille de fond pour repères visuels */}
-            <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10">
-                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
-                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
-                <div className="w-full h-px bg-slate-900 border-dashed border-t"></div>
+            <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-20 z-0">
+                <div className="w-full h-px bg-slate-400 border-dashed border-t"></div>
+                <div className="w-full h-px bg-slate-400 border-dashed border-t"></div>
+                <div className="w-full h-px bg-slate-400 border-dashed border-t"></div>
             </div>
 
-            {plannedData.map((val, i) => (
+            {plannedData.map((val, i) => {
+                // S'assurer que les valeurs ne sont pas undefined
+                const planVal = val || 0;
+                const realVal = realizedData[i] || 0;
+                
+                return (
                 <div 
                     key={i} 
                     className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10"
@@ -401,23 +551,23 @@ const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
                 >
                 
                 {/* Conteneur de la barre */}
-                <div className="w-full relative flex items-end justify-center h-full rounded-t-sm overflow-hidden">
-                     {/* Barre Planifiée (Fond gris clair/fantôme) - Toujours visible */}
+                <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
+                     {/* Barre Planifiée (CONTOUR) - Toujours visible pour montrer l'objectif */}
                     <div 
-                        className="w-full absolute bottom-0 bg-slate-200 border-t border-x border-slate-300 transition-all duration-500 rounded-t-sm"
-                        style={{ height: `${(val / max) * 100}%` }}
+                        className={`w-full absolute bottom-0 border-2 border-dashed border-slate-300 bg-slate-50 transition-all duration-500 rounded-t-sm z-0 ${planVal === 0 ? 'h-1' : ''}`}
+                        style={{ height: `${planVal > 0 ? (planVal / max) * 100 : 1}%` }}
                     ></div>
 
-                    {/* Barre Réalisée (Couleur de remplissage) */}
+                    {/* Barre Réalisée (REMPLISSAGE) */}
                     <div 
-                        className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-500'}`}
-                        style={{ height: `${(realizedData[i] / max) * 100}%` }}
+                        className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-500'}`}
+                        style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}
                     ></div>
                 </div>
 
                 <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
                 </div>
-            ))}
+            )})}
         </div>
         
         {/* Detail Box */}
@@ -425,10 +575,10 @@ const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
              <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-800 animate-in slide-in-from-top-2 shadow-sm">
                  <div className="flex justify-between items-center mb-1">
                     <span className="font-bold flex items-center gap-1"><Clock size={12}/> Semaine {selectedWeek + 1}</span>
-                    <span className="bg-white px-2 py-0.5 rounded shadow-sm text-[10px] font-black border border-indigo-100">{realizedData[selectedWeek]} / {plannedData[selectedWeek]} min</span>
+                    <span className="bg-white px-2 py-0.5 rounded shadow-sm text-[10px] font-black border border-indigo-100">{realizedData[selectedWeek] || 0} / {plannedData[selectedWeek] || 0} min</span>
                  </div>
                  <div className="text-slate-600 italic">
-                    {realizedData[selectedWeek] >= plannedData[selectedWeek] 
+                    {(realizedData[selectedWeek] || 0) >= (plannedData[selectedWeek] || 1)
                         ? "🎉 Objectif de volume atteint ! Bravo." 
                         : "L'objectif est la barre grise. Continuez vos efforts !"}
                  </div>
@@ -501,6 +651,12 @@ const TrimpChart = ({ plannedData, realizedData }) => {
 
     return (
         <div className="space-y-4">
+             {/* Légende */}
+             <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Cible</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 bg-purple-500 rounded-sm"></div> Fait</div>
+            </div>
+
             <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative">
                  {/* Grille de fond */}
                 <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10">
@@ -509,30 +665,32 @@ const TrimpChart = ({ plannedData, realizedData }) => {
                     <div className="w-full h-px bg-purple-900 border-dashed border-t"></div>
                 </div>
 
-                {trimpData.map((trimp, i) => (
+                {trimpData.map((trimp, i) => {
+                     const realizedTrimp = realizedTrimpData[i] || 0;
+                     return (
                     <div 
                         key={i} 
                         className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10"
                         onClick={() => setSelectedPoint(i === selectedPoint ? null : i)}
                     >
                         {/* Conteneur de barre */}
-                        <div className="w-full relative flex items-end justify-center h-full rounded-t-sm overflow-hidden">
-                             {/* Barre Planifiée (Fond gris) */}
+                        <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
+                             {/* Barre Planifiée (Contour gris) */}
                             <div 
-                                className="w-full absolute bottom-0 bg-slate-200 border-t border-x border-slate-300 opacity-50 rounded-t-sm"
+                                className="w-full absolute bottom-0 bg-slate-100 border-2 border-dashed border-slate-300 opacity-60 rounded-t-sm z-0"
                                 style={{ height: `${(trimp / maxTrimp) * 80 + 10}%` }}
                             ></div>
 
                             {/* Barre Réalisée (Couleur) */}
                             <div 
                                 className={`w-full absolute bottom-0 transition-all duration-1000 z-10 rounded-t-sm ${selectedPoint === i ? 'bg-purple-600' : 'bg-gradient-to-t from-purple-300 to-purple-500'}`}
-                                style={{ height: `${(realizedTrimpData[i] / maxTrimp) * 80 + 10}%` }}
+                                style={{ height: `${(realizedTrimp / maxTrimp) * 80 + 10}%` }}
                             ></div>
                         </div>
 
                         <span className={`text-[9px] font-mono z-20 ${selectedPoint === i ? 'text-purple-600 font-bold scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
                     </div>
-                ))}
+                )})}
             </div>
 
             {/* Detail Box */}
@@ -543,10 +701,10 @@ const TrimpChart = ({ plannedData, realizedData }) => {
                         <span className="font-bold block mb-1">Charge Semaine {selectedPoint + 1}</span>
                         <div className="flex gap-4 mb-1 text-[10px]">
                              <span className="text-slate-500">Prévu: {trimpData[selectedPoint]}</span>
-                             <span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint]}</span>
+                             <span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint] || 0}</span>
                         </div>
                         <div className="text-slate-600 italic">
-                        {realizedTrimpData[selectedPoint] > trimpData[selectedPoint] 
+                        {(realizedTrimpData[selectedPoint] || 0) > trimpData[selectedPoint] 
                             ? "Attention, charge plus élevée que prévu." 
                             : "Charge maîtrisée."}
                         </div>
@@ -1196,18 +1354,18 @@ export default function App() {
 
       {step === 'result' && (
         <div className="bg-slate-900 text-white p-6 rounded-b-3xl shadow-lg sticky top-0 z-50">
-            <div className="max-w-3xl mx-auto flex justify-between items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                  <button onClick={() => setStep('input')} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition" title="Retour Menu">
-                      <ArrowLeft size={20} />
-                  </button>
-                  <div>
-                      <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
-                      <FlaskConical size={12}/> C-Lab Performance
-                      </div>
-                      <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
-                  </div>
-              </div>
+            <div className="max-w-3xl mx-auto flex justify-between items-center flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+                <button onClick={() => setStep('input')} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition" title="Retour Menu">
+                    <ArrowLeft size={20} />
+                </button>
+                <div>
+                    <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
+                    <FlaskConical size={12}/> C-Lab Performance
+                    </div>
+                    <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
+                </div>
+            </div>
             
             {/* AJOUT : Bouton Don dans le Header */}
             <div className="flex items-center gap-2 ml-auto">
@@ -1664,10 +1822,7 @@ export default function App() {
               <div className="space-y-8">
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Respect du modèle Polarisé (80/20)</h4>
-                  <PolarizationChart 
-                    low={stats?.intensityBuckets.low || 0} 
-                    high={stats?.intensityBuckets.high || 0} 
-                  />
+                  <PolarizationChart low={stats?.intensityBuckets.low || 0} high={stats?.intensityBuckets.high || 0} />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Volume Hebdomadaire (Minutes)</h4>
