@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward
 } from 'lucide-react';
 
 // ==================================================================================
@@ -44,7 +44,62 @@ const formatPace = (val) => {
 const calcDist = (minutes, pacePerKm) => (minutes / pacePerKm).toFixed(1) + " km";
 
 const generateICS = (plan) => {
-    alert("L'export Calendrier sera disponible dans la prochaine version !");
+    if (!plan || plan.length === 0) {
+        alert("Aucun plan à exporter. Veuillez générer un programme d'abord.");
+        return;
+    }
+
+    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//C-Lab//Performance//FR\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
+    
+    // Date de début : Lundi prochain (ou demain si on veut être plus proche)
+    // Ici on simule un début "Lundi prochain" pour caler avec le planning
+    const startDate = new Date();
+    const daysUntilMonday = (1 + 7 - startDate.getDay()) % 7 || 7; 
+    startDate.setDate(startDate.getDate() + daysUntilMonday);
+    startDate.setHours(9, 0, 0, 0); // Début par défaut à 09h00
+
+    const formatDate = (date) => {
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    plan.forEach((week, wIdx) => {
+        week.schedule.forEach((day, dIdx) => {
+            if (day.sessionIds && day.sessionIds.length > 0) {
+                // Récupérer les infos des sessions
+                const daySessions = week.sessions.filter(s => day.sessionIds.includes(s.id));
+                
+                daySessions.forEach(session => {
+                    // Calcul date : DateDépart + (Semaine * 7) + IndexJour (0=Lundi, etc.)
+                    const sessionDate = new Date(startDate);
+                    sessionDate.setDate(startDate.getDate() + (wIdx * 7) + dIdx);
+                    
+                    // Fin : + Durée (ou 1h par défaut)
+                    const endDate = new Date(sessionDate);
+                    const duration = session.durationMin || 60;
+                    endDate.setMinutes(endDate.getMinutes() + duration);
+
+                    icsContent += "BEGIN:VEVENT\n";
+                    icsContent += `DTSTART:${formatDate(sessionDate)}\n`;
+                    icsContent += `DTEND:${formatDate(endDate)}\n`;
+                    icsContent += `SUMMARY:C-Lab: ${session.type}\n`;
+                    icsContent += `DESCRIPTION:${session.description || ''} \\n\\nFocus Semaine: ${week.focus}\\nConseil: ${session.planningAdvice || ''}\n`;
+                    icsContent += `LOCATION:C-Lab Performance\n`;
+                    icsContent += "STATUS:CONFIRMED\n";
+                    icsContent += "END:VEVENT\n";
+                });
+            }
+        });
+    });
+
+    icsContent += "END:VCALENDAR";
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', 'programme_c_lab.ics');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 
 const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor) => {
@@ -306,6 +361,13 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     return () => clearInterval(interval);
   }, [isTimerRunning, timer]);
 
+  // Nouveau : Fonction Skip (Passer le repos sans son)
+  const handleSkip = () => {
+    setIsTimerRunning(false);
+    setTimer(0);
+    setActiveSetIndex(null);
+  };
+
   const toggleSet = (index) => {
     const newStatus = [...setsStatus];
     const isChecking = !newStatus[index];
@@ -437,6 +499,8 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
                                 <Timer size={14}/> {formatTime(timer)}
                             </div>
                             <button onClick={() => setTimer(t => t + 10)} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Plus size={14}/></button>
+                            {/* Bouton pour sauter le repos - Nouveau ! */}
+                            <button onClick={handleSkip} className="bg-rose-100 text-rose-700 p-1 rounded-full hover:bg-rose-200 transition ml-1" title="Passer le repos"><SkipForward size={14}/></button>
                         </div>
                     )}
                 </div>
@@ -1223,35 +1287,17 @@ export default function App() {
 
             {plan.map((week, weekIdx) => {
                 const isOpen = expandedWeek === week.weekNumber;
-                
-                // Filtre d'affichage pour le "Focus Jour"
-                const sessionsToShow = filteredSessionIds 
-                    ? week.sessions.filter(s => filteredSessionIds.includes(s.id))
-                    : week.sessions;
-
-                // Vérifier si TOUTES les séances de la semaine sont complétées
+                const sessionsToShow = filteredSessionIds ? week.sessions.filter(s => filteredSessionIds.includes(s.id)) : week.sessions;
                 const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
-
-                // Indicateur visuel pour l'en-tête de semaine (Vert si fini)
-                const headerBgClass = allSessionsCompleted 
-                    ? 'bg-green-50 border-green-200' 
-                    : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
-                
-                const headerIconClass = allSessionsCompleted
-                    ? 'bg-green-600 text-white'
-                    : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
+                const headerBgClass = allSessionsCompleted ? 'bg-green-50 border-green-200' : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
+                const headerIconClass = allSessionsCompleted ? 'bg-green-600 text-white' : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
 
                 return (
                   <div key={week.weekNumber} className={`rounded-xl shadow-sm border overflow-hidden transition-all ${allSessionsCompleted ? 'border-green-200' : 'border-slate-100 bg-white'} ${isOpen ? 'ring-2 ring-indigo-500' : ''}`}>
                     <button onClick={() => setExpandedWeek(isOpen ? null : week.weekNumber)} className={`w-full p-4 flex items-center justify-between ${headerBgClass}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>
-                            {allSessionsCompleted ? <Check size={18}/> : week.weekNumber}
-                        </div>
-                        <div className="text-left">
-                            <h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>
-                            {allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}
-                        </div>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>{allSessionsCompleted ? <Check size={18}/> : week.weekNumber}</div>
+                        <div className="text-left"><h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>{allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}</div>
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
