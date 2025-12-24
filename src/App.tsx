@@ -44,62 +44,7 @@ const formatPace = (val) => {
 const calcDist = (minutes, pacePerKm) => (minutes / pacePerKm).toFixed(1) + " km";
 
 const generateICS = (plan) => {
-    if (!plan || plan.length === 0) {
-        alert("Aucun plan à exporter. Veuillez générer un programme d'abord.");
-        return;
-    }
-
-    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//C-Lab//Performance//FR\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
-    
-    // Date de début : Lundi prochain (ou demain si on veut être plus proche)
-    // Ici on simule un début "Lundi prochain" pour caler avec le planning
-    const startDate = new Date();
-    const daysUntilMonday = (1 + 7 - startDate.getDay()) % 7 || 7; 
-    startDate.setDate(startDate.getDate() + daysUntilMonday);
-    startDate.setHours(9, 0, 0, 0); // Début par défaut à 09h00
-
-    const formatDate = (date) => {
-        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    };
-
-    plan.forEach((week, wIdx) => {
-        week.schedule.forEach((day, dIdx) => {
-            if (day.sessionIds && day.sessionIds.length > 0) {
-                // Récupérer les infos des sessions
-                const daySessions = week.sessions.filter(s => day.sessionIds.includes(s.id));
-                
-                daySessions.forEach(session => {
-                    // Calcul date : DateDépart + (Semaine * 7) + IndexJour (0=Lundi, etc.)
-                    const sessionDate = new Date(startDate);
-                    sessionDate.setDate(startDate.getDate() + (wIdx * 7) + dIdx);
-                    
-                    // Fin : + Durée (ou 1h par défaut)
-                    const endDate = new Date(sessionDate);
-                    const duration = session.durationMin || 60;
-                    endDate.setMinutes(endDate.getMinutes() + duration);
-
-                    icsContent += "BEGIN:VEVENT\n";
-                    icsContent += `DTSTART:${formatDate(sessionDate)}\n`;
-                    icsContent += `DTEND:${formatDate(endDate)}\n`;
-                    icsContent += `SUMMARY:C-Lab: ${session.type}\n`;
-                    icsContent += `DESCRIPTION:${session.description || ''} \\n\\nFocus Semaine: ${week.focus}\\nConseil: ${session.planningAdvice || ''}\n`;
-                    icsContent += `LOCATION:C-Lab Performance\n`;
-                    icsContent += "STATUS:CONFIRMED\n";
-                    icsContent += "END:VEVENT\n";
-                });
-            }
-        });
-    });
-
-    icsContent += "END:VCALENDAR";
-
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', 'programme_c_lab.ics');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    alert("L'export Calendrier sera disponible dans la prochaine version !");
 };
 
 const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor) => {
@@ -163,19 +108,25 @@ const getRecommendedSchedule = (sessions) => {
         scheduleData[5].focus = "Récup Active";
     }
 
-    // Placement Muscu
-    const legSession = gyms.find(g => g.exercises?.some(e => e.imageKeyword === "squat" || e.imageKeyword === "lunges"));
+    // Placement Muscu (et Street Workout) - Détection plus large des mots clés jambes
+    const legSession = gyms.find(g => g.exercises?.some(e => 
+        e.imageKeyword?.includes("squat") || 
+        e.imageKeyword?.includes("lunges") || 
+        e.imageKeyword?.includes("legs") || 
+        e.imageKeyword?.includes("pistol") || 
+        e.imageKeyword?.includes("nordic")
+    ));
     const otherGyms = gyms.filter(g => g.id !== legSession?.id);
 
     if (legSession) {
         if (scheduleData[4].sessions.length === 0) {
             scheduleData[4].sessions.push(legSession);
-            scheduleData[4].focus = "Force";
+            scheduleData[4].focus = "Force/Jambes";
         } else if (scheduleData[3].sessions.length > 0) {
             scheduleData[3].sessions.push(legSession);
         } else if (scheduleData[0].sessions.length === 0) {
             scheduleData[0].sessions.push(legSession);
-            scheduleData[0].focus = "Force";
+            scheduleData[0].focus = "Force/Jambes";
         }
     }
 
@@ -185,7 +136,7 @@ const getRecommendedSchedule = (sessions) => {
     fillOrder.forEach(dayIdx => {
         if (scheduleData[dayIdx].sessions.length === 0 && gymIdx < otherGyms.length) {
             scheduleData[dayIdx].sessions.push(otherGyms[gymIdx]);
-            scheduleData[dayIdx].focus = "Hypertrophie"; 
+            scheduleData[dayIdx].focus = "Renforcement"; 
             gymIdx++;
         }
     });
@@ -309,6 +260,38 @@ const STRENGTH_PROTOCOLS = {
       { name: "Écarté Couché", sets: 3, reps: "15", rest: "60s", rpe: 9, note: "Isolation.", imageKeyword: "flyes", instructions: "Ouvrez la cage thoracique. Gardez une légère flexion des coudes.", imageUrl: "" },
       { name: "Pull-over", sets: 3, reps: "15", rest: "60s", rpe: 8, note: "Dos/Pecs.", imageKeyword: "pullover", instructions: "Allongé en travers du banc. Descendez l'haltère derrière la tête bras tendus.", imageUrl: "" },
       { name: "Shrugs", sets: 4, reps: "15", rest: "45s", rpe: 8, note: "Trapèzes.", imageKeyword: "shrugs", instructions: "Haussement d'épaules. Ne roulez pas les épaules, juste haut/bas.", imageUrl: "" }
+    ]
+  },
+  street_workout: {
+    push: [
+        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps/Épaules", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ, dépression scapulaire. Descendez jusqu'à ce que les épaules passent sous les coudes (90°+).", imageUrl: "" },
+        { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Deltoïdes Antérieurs", imageKeyword: "pike pushup", instructions: "Corps en V inversé. Avancez la tête devant les mains en descendant (tripode). Poussez fort pour revenir en alignant les oreilles avec les bras.", imageUrl: "" },
+        { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Bras tendus / Protraction", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant autant que possible. Gardez le dos rond (protraction) en haut du mouvement.", imageUrl: "" },
+        { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps Focus", imageKeyword: "diamond pushups", instructions: "Mains jointes sous le sternum. Coudes le long du corps. Amplitude complète.", imageUrl: "" }
+    ],
+    pull: [
+        { name: "Tractions Pronation", sets: 4, reps: "8-12", rest: "2 min", rpe: 9, note: "Grand Dorsal", imageKeyword: "pullups", instructions: "Prise légèrement plus large que les épaules. Initiez le mouvement par les omoplates (dépression). Menton au-dessus de la barre.", imageUrl: "" },
+        { name: "Tractions Australiennes", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Rhomboïdes / Trapèzes", imageKeyword: "australian pullups", instructions: "Barre basse. Corps gainé, talons au sol. Tirez la barre vers le bas de la poitrine. Serrez les omoplates en haut.", imageUrl: "" },
+        { name: "Chin-ups", sets: 3, reps: "8-10", rest: "90s", rpe: 9, note: "Biceps / Dos", imageKeyword: "chinups", instructions: "Prise supination (paumes vers soi). Focus sur la fermeture de l'angle du coude. Extension complète en bas.", imageUrl: "" },
+        { name: "Skin The Cat", sets: 3, reps: "3-5", rest: "2 min", rpe: 8, note: "Mobilité / Force Bras tendus", imageKeyword: "skin the cat", instructions: "Passez les jambes entre les bras, enroulez le corps jusqu'à l'étirement maximal des épaules. Revenez en contrôlant. Excellent pour la santé des épaules.", imageUrl: "" }
+    ],
+    legs: [
+        { name: "Pistol Squat (Assisté ou Libre)", sets: 4, reps: "5-8/jambe", rest: "2 min", rpe: 9, note: "Force Unilatérale", imageKeyword: "pistol squat", instructions: "Squat sur une jambe. La jambe libre est tendue devant. Gardez le talon au sol. Utilisez un poteau pour l'équilibre si nécessaire.", imageUrl: "" },
+        { name: "Fentes Sautées", sets: 4, reps: "20 total", rest: "90s", rpe: 8, note: "Explosivité", imageKeyword: "jump lunges", instructions: "Explosez vers le haut à chaque répétition. Changez de jambe en l'air. Amortissez la réception.", imageUrl: "" },
+        { name: "Squat Bulgare", sets: 3, reps: "10/jambe", rest: "90s", rpe: 8, note: "Chaîne Postérieure", imageKeyword: "bulgarian split squat", instructions: "Pied arrière surélevé. Descendez le genou arrière proche du sol. Gardez le buste droit pour les quads, penché pour les fessiers.", imageUrl: "" },
+        { name: "Glute Bridge Unilatéral", sets: 3, reps: "15/jambe", rest: "60s", rpe: 8, note: "Fessiers / Ischios", imageKeyword: "glute bridge", instructions: "Dos au sol, une jambe levée. Poussez dans le talon au sol pour lever les hanches. Contractez fort le fessier en haut.", imageUrl: "" }
+    ],
+    skills_core: [
+        { name: "Muscle-Up Transition (Negatives)", sets: 5, reps: "3-5", rest: "3 min", rpe: 9, note: "Technique de tirage haut", imageKeyword: "muscle up", instructions: "Montez au-dessus de la barre (saut ou chaise) et descendez le plus lentement possible la transition (passage du buste vers les bras).", imageUrl: "" },
+        { name: "L-Sit Hold", sets: 4, reps: "Max sec", rest: "90s", rpe: 9, note: "Compression Abdominale", imageKeyword: "l-sit", instructions: "En appui sur les mains (sol ou barres //), levez les jambes tendues à l'équerre. Poussez fort dans les épaules (dépression).", imageUrl: "" },
+        { name: "Toes to Bar (ou Genoux)", sets: 4, reps: "8-12", rest: "90s", rpe: 8, note: "Flexion de hanche", imageKeyword: "toes to bar", instructions: "Suspendu, amenez les orteils toucher la barre. Gardez les jambes tendues si possible. Évitez le balancement (kipping).", imageUrl: "" },
+        { name: "Hollow Body Hold", sets: 3, reps: "45-60s", rest: "60s", rpe: 7, note: "Gainage Intégral", imageKeyword: "hollow body", instructions: "Dos plaqué au sol (bas du dos). Décollez épaules et jambes. Corps en forme de banane. Indispensable pour la tension corporelle.", imageUrl: "" }
+    ],
+    full_body: [
+        { name: "Burpees", sets: 4, reps: "15", rest: "60s", rpe: 8, note: "Conditioning", imageKeyword: "burpees", instructions: "Pompe stricte, ramené dynamique, saut vertical. Rythme constant.", imageUrl: "" },
+        { name: "Tractions Supination", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Tirage", imageKeyword: "chinups", instructions: "Focus volume.", imageUrl: "" },
+        { name: "Dips", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Poussée", imageKeyword: "dips", instructions: "Focus volume.", imageUrl: "" },
+        { name: "Squats", sets: 4, reps: "25", rest: "60s", rpe: 7, note: "Endurance musculaire", imageKeyword: "air squat", instructions: "Rythme rapide mais amplitude complète.", imageUrl: "" }
     ]
   }
 };
@@ -999,6 +982,7 @@ export default function App() {
     const adaptationWeeks = Math.ceil(totalWeeks * 0.3);
     const taperWeeks = 2;
     let hypertrophySessionIndex = 0;
+    let streetSessionIndex = 0; // Ajout de l'index pour Street Workout
 
     for (let i = 1; i <= totalWeeks; i++) {
       const isRaceWeek = i === totalWeeks;
@@ -1045,19 +1029,41 @@ export default function App() {
       
       for(let s=1; s<=strengthCount; s++) {
         let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = [];
+        
         if (userData.strengthFocus === 'force') {
+            // --- FORCE ---
             if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } }
             else if (strengthCount >= 3) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else if(s===2) { gymType = "Haut (Force)"; exercises = STRENGTH_PROTOCOLS.force.upper; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; gymTags=['legs']; } }
+        
+        } else if (userData.strengthFocus === 'street_workout') {
+            // --- STREET WORKOUT (NOUVEAU) ---
+            const splitNames = ["Street Push (Poussée)", "Street Pull (Tirage)", "Street Legs (Jambes)", "Street Skills (Gainage/Tech)", "Street Full Body"];
+            const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body];
+            
+            const currentSplitIndex = streetSessionIndex % 5;
+            gymType = splitNames[currentSplitIndex];
+            exercises = splitExos[currentSplitIndex];
+            
+            if (currentSplitIndex === 2) gymTags = ['legs']; // C'est la séance jambes
+            if (gymTags.includes('legs')) gymAdvice = "⚠️ Jambes : Attention à la récup pour le run.";
+            
+            streetSessionIndex++;
+
         } else {
+            // --- HYPERTROPHIE (DEFAULT) ---
             const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps)", "Legs (Jambes)", "Accessory (Bras/Épaules)", "Arnold (Pecs/Dos)"];
             const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back];
+            
             const currentSplitIndex = hypertrophySessionIndex % 5;
-            gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex];
+            gymType = splitNames[currentSplitIndex];
+            exercises = splitExos[currentSplitIndex];
+            
             if (currentSplitIndex === 2) gymTags = ['legs']; 
             if (gymTags.includes('legs')) gymAdvice = "⚠️ Attention : Grosse fatigue nerveuse.";
             hypertrophySessionIndex++;
         }
-        sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "1h15", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance Volume (${gymType}). 3 exos/muscle.`, scienceNote: "Hypertrophie fonctionnelle.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags });
+
+        sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "1h15", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement spécifique.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags });
       }
 
       const weeklySchedule = getRecommendedSchedule(sessions);
@@ -1245,6 +1251,7 @@ export default function App() {
                     <div className="flex gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200">
                         <button onClick={() => setUserData({...userData, strengthFocus: 'force'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'force' ? 'bg-white shadow-md text-rose-600 border border-rose-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Force & Puissance</span><span className="text-[9px] font-normal opacity-70">5 reps • Repos long • Lourd</span></button>
                         <button onClick={() => setUserData({...userData, strengthFocus: 'hypertrophy'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'hypertrophy' ? 'bg-white shadow-md text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Hypertrophie & Volume</span><span className="text-[9px] font-normal opacity-70">12 reps • Repos court • Pump</span></button>
+                        <button onClick={() => setUserData({...userData, strengthFocus: 'street_workout'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'street_workout' ? 'bg-white shadow-md text-orange-600 border border-orange-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Street Workout</span><span className="text-[9px] font-normal opacity-70">Poids du corps • Skills • Agilité</span></button>
                     </div>
                 </div>
             )}
@@ -1287,17 +1294,35 @@ export default function App() {
 
             {plan.map((week, weekIdx) => {
                 const isOpen = expandedWeek === week.weekNumber;
-                const sessionsToShow = filteredSessionIds ? week.sessions.filter(s => filteredSessionIds.includes(s.id)) : week.sessions;
+                
+                // Filtre d'affichage pour le "Focus Jour"
+                const sessionsToShow = filteredSessionIds 
+                    ? week.sessions.filter(s => filteredSessionIds.includes(s.id))
+                    : week.sessions;
+
+                // Vérifier si TOUTES les séances de la semaine sont complétées
                 const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
-                const headerBgClass = allSessionsCompleted ? 'bg-green-50 border-green-200' : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
-                const headerIconClass = allSessionsCompleted ? 'bg-green-600 text-white' : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
+
+                // Indicateur visuel pour l'en-tête de semaine (Vert si fini)
+                const headerBgClass = allSessionsCompleted 
+                    ? 'bg-green-50 border-green-200' 
+                    : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
+                
+                const headerIconClass = allSessionsCompleted
+                    ? 'bg-green-600 text-white'
+                    : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
 
                 return (
                   <div key={week.weekNumber} className={`rounded-xl shadow-sm border overflow-hidden transition-all ${allSessionsCompleted ? 'border-green-200' : 'border-slate-100 bg-white'} ${isOpen ? 'ring-2 ring-indigo-500' : ''}`}>
                     <button onClick={() => setExpandedWeek(isOpen ? null : week.weekNumber)} className={`w-full p-4 flex items-center justify-between ${headerBgClass}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>{allSessionsCompleted ? <Check size={18}/> : week.weekNumber}</div>
-                        <div className="text-left"><h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>{allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}</div>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>
+                            {allSessionsCompleted ? <Check size={18}/> : week.weekNumber}
+                        </div>
+                        <div className="text-left">
+                            <h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>
+                            {allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}
+                        </div>
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
