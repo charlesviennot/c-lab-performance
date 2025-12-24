@@ -264,10 +264,10 @@ const STRENGTH_PROTOCOLS = {
   },
   street_workout: {
     push: [
-        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps/Épaules", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ, dépression scapulaire. Descendez jusqu'à ce que les épaules passent sous les coudes (90°+).", imageUrl: "" },
-        { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Deltoïdes Antérieurs", imageKeyword: "pike pushup", instructions: "Corps en V inversé. Avancez la tête devant les mains en descendant (tripode). Poussez fort pour revenir en alignant les oreilles avec les bras.", imageUrl: "" },
-        { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Bras tendus / Protraction", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant autant que possible. Gardez le dos rond (protraction) en haut du mouvement.", imageUrl: "" },
-        { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps Focus", imageKeyword: "diamond pushups", instructions: "Mains jointes sous le sternum. Coudes le long du corps. Amplitude complète.", imageUrl: "" }
+        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps/Épaules", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ, dépression scapulaire. Descendez jusqu'à ce que les épaules passent sous les coudes (90°+).", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
+        { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Deltoïdes Antérieurs", imageKeyword: "pike pushup", instructions: "Corps en V inversé. Avancez la tête devant les mains en descendant (tripode). Poussez fort pour revenir en alignant les oreilles avec les bras.", imageUrl: "https://i.postimg.cc/nzSktsnG/Pike-Push-ups.png" },
+        { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Bras tendus / Protraction", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant autant que possible. Gardez le dos rond (protraction) en haut du mouvement.", imageUrl: "https://i.postimg.cc/2y2fY7V0/Pseudo_Planche_Push_ups.png" },
+        { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps Focus", imageKeyword: "diamond pushups", instructions: "Mains jointes sous le sternum. Coudes le long du corps. Amplitude complète.", imageUrl: "https://i.postimg.cc/P5ZTpZcL/pompe_diamant.png" }
     ],
     pull: [
         { name: "Tractions Pronation", sets: 4, reps: "8-12", rest: "2 min", rpe: 9, note: "Grand Dorsal", imageKeyword: "pullups", instructions: "Prise légèrement plus large que les épaules. Initiez le mouvement par les omoplates (dépression). Menton au-dessus de la barre.", imageUrl: "" },
