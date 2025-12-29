@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal
 } from 'lucide-react';
 
 // ==================================================================================
@@ -20,11 +20,11 @@ const DONATION_URL = "https://www.buymeacoffee.com/charles.viennot";
 
 const parseRestTime = (restStr) => {
     if (!restStr || restStr === '-' || restStr === '0') return 0;
-    if (restStr.includes('min')) {
+    if (typeof restStr === 'string' && restStr.includes('min')) {
         const minutes = parseInt(restStr.replace(/\D/g, ''));
         return isNaN(minutes) ? 60 : minutes * 60;
     }
-    if (restStr.includes('s')) {
+    if (typeof restStr === 'string' && restStr.includes('s')) {
          const seconds = parseInt(restStr.replace(/\D/g, ''));
          return isNaN(seconds) ? 30 : seconds;
     }
@@ -36,28 +36,65 @@ const parseRestTime = (restStr) => {
 };
 
 const formatPace = (val) => {
+    if (!val || val === Infinity || isNaN(val)) return "-:--";
     const min = Math.floor(val);
     const sec = Math.round((val - min) * 60);
     return `${min}:${sec.toString().padStart(2, '0')}`;
 };
 
-const calcDist = (minutes, pacePerKm) => (minutes / pacePerKm).toFixed(1) + " km";
-
-const generateICS = (plan) => {
-    alert("L'export Calendrier sera disponible dans la prochaine version !");
+const formatGoalTime = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = Math.floor(minutes % 60);
+    const s = Math.round((minutes - Math.floor(minutes)) * 60);
+    
+    if (h > 0) {
+        return `${h}h ${m.toString().padStart(2, '0')}${s > 0 ? ':' + s.toString().padStart(2, '0') : ''}`;
+    }
+    return `${m}m ${s > 0 ? s.toString().padStart(2, '0') : ''}`;
 };
 
-const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor) => {
-    const effectiveGoalTime = goalTime * difficultyFactor;
-    const racePace = effectiveGoalTime / 10;
+const calcDist = (minutes, pacePerKm) => {
+    if (!pacePerKm || pacePerKm <= 0) return "N/A";
+    return (minutes / pacePerKm).toFixed(1) + " km";
+};
+
+const generateICS = (plan) => {
+    // Simulation pour éviter l'erreur si alert est bloqué
+    console.log("Génération ICS...");
+};
+
+// --- LOGIQUE D'ALLURES ---
+const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor, distanceKm) => {
+    // goalTime est en minutes
+    const racePace = goalTime / distanceKm;
+    
     const progressRatio = (week - 1) / Math.max(1, totalWeeks - 1);
     const startFactor = 1 + (startPercent / 100);
     const currentFactor = startFactor - (progressRatio * (startFactor - 1.0));
     const currentRacePace = racePace * currentFactor;
     
-    const valEasy = currentRacePace * 1.30;
-    const valThreshold = currentRacePace * 1.05;
-    const valInterval = currentRacePace * 0.92;
+    let easyRatio = 1.35; 
+    let thresholdRatio = 1.08;
+    let intervalRatio = 0.90;
+
+    // Adaptation physio selon la distance
+    if (distanceKm === 5) {
+        easyRatio = 1.45; 
+        thresholdRatio = 1.15; 
+        intervalRatio = 0.95; 
+    } else if (distanceKm === 21.1) {
+        easyRatio = 1.25;
+        thresholdRatio = 1.02; 
+        intervalRatio = 0.90;
+    } else if (distanceKm > 40) { 
+        easyRatio = 1.20; 
+        thresholdRatio = 0.96; 
+        intervalRatio = 0.88; 
+    }
+
+    const valEasy = currentRacePace * easyRatio;
+    const valThreshold = currentRacePace * thresholdRatio;
+    const valInterval = currentRacePace * intervalRatio;
 
     const easyLow = formatPace(valEasy);
     const easyHigh = formatPace(valEasy + 0.5);
@@ -73,90 +110,128 @@ const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFact
     };
 };
 
-const getRecommendedSchedule = (sessions) => {
-    const runs = sessions.filter(s => s.category === 'run');
-    const gyms = sessions.filter(s => s.category === 'strength');
-    
+const getRecommendedSchedule = (sessions, isHyrox = false) => {
     const scheduleData = Array(7).fill(null).map((_, i) => ({
         dayName: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"][i],
         sessions: [],
         focus: ""
     }));
 
-    // Placement Runs
-    const longRun = runs.find(r => r.type.includes("Longue") || (r.type.includes("Endurance") && r.durationMin >= 50));
-    if (longRun) {
-        scheduleData[6].sessions.push(longRun);
-        scheduleData[6].focus = "Volume Aérobie";
-    }
+    if (isHyrox) {
+        // --- LOGIQUE HYROX ---
+        // Priorité aux séances Hyrox, puis Force, puis Run
+        const hyroxSessions = sessions.filter(s => s.category === 'hyrox');
+        const strengthSessions = sessions.filter(s => s.category === 'strength');
+        const runSessions = sessions.filter(s => s.category === 'run');
 
-    const qualityRun = runs.find(r => (r.intensity === 'high' || r.intensity === 'medium') && r.id !== longRun?.id);
-    if (qualityRun) {
-        scheduleData[1].sessions.push(qualityRun);
-        scheduleData[1].focus = "Intensité Clé";
-    }
+        // Distribution idéale Hyrox
+        // Hyrox WODs: Mar, Jeu, Sam
+        const hyroxDays = [1, 3, 5, 0, 2, 4, 6]; 
+        hyroxSessions.forEach((s, i) => {
+            const day = hyroxDays[i % 7];
+            scheduleData[day].sessions.push(s);
+            scheduleData[day].focus = "HYROX WOD";
+        });
 
-    const easyRun1 = runs.find(r => r.id !== longRun?.id && r.id !== qualityRun?.id);
-    if (easyRun1) {
-        scheduleData[3].sessions.push(easyRun1);
-        scheduleData[3].focus = "Assimilation";
-    }
+        // Force: Lun, Ven
+        const strengthDays = [0, 4, 2, 6, 1, 3, 5];
+        let strIdx = 0;
+        strengthDays.forEach(day => {
+            if (strIdx < strengthSessions.length && scheduleData[day].sessions.length === 0) {
+                scheduleData[day].sessions.push(strengthSessions[strIdx]);
+                scheduleData[day].focus = "Renfo Pur";
+                strIdx++;
+            }
+        });
 
-    const easyRun2 = runs.find(r => r.id !== longRun?.id && r.id !== qualityRun?.id && r.id !== easyRun1?.id);
-    if (easyRun2) {
-        scheduleData[5].sessions.push(easyRun2);
-        scheduleData[5].focus = "Récup Active";
-    }
+        // Run: Mer, Dim (Endurance)
+        const runDays = [2, 6, 0, 4, 1, 3, 5];
+        let runIdx = 0;
+        runDays.forEach(day => {
+            if (runIdx < runSessions.length) {
+                // Si jour vide
+                if (scheduleData[day].sessions.length === 0) {
+                    scheduleData[day].sessions.push(runSessions[runIdx]);
+                    scheduleData[day].focus = "Endurance";
+                    runIdx++;
+                } 
+                // Bi-quotidien possible si jour de renfo pur (pas Hyrox WOD car trop intense)
+                else if (scheduleData[day].sessions.length === 1 && scheduleData[day].sessions[0].category === 'strength') {
+                    scheduleData[day].sessions.push(runSessions[runIdx]);
+                    runIdx++;
+                }
+            }
+        });
 
-    // Placement Muscu (et Street Workout) - Détection plus large des mots clés jambes
-    const legSession = gyms.find(g => g.exercises?.some(e => 
-        e.imageKeyword?.includes("squat") || 
-        e.imageKeyword?.includes("lunges") || 
-        e.imageKeyword?.includes("legs") || 
-        e.imageKeyword?.includes("pistol") || 
-        e.imageKeyword?.includes("nordic")
-    ));
-    const otherGyms = gyms.filter(g => g.id !== legSession?.id);
+    } else {
+        // --- LOGIQUE RUNNING CLASSIQUE ---
+        const runs = sessions.filter(s => s.category === 'run');
+        const gyms = sessions.filter(s => s.category === 'strength');
 
-    if (legSession) {
-        if (scheduleData[4].sessions.length === 0) {
-            scheduleData[4].sessions.push(legSession);
-            scheduleData[4].focus = "Force/Jambes";
-        } else if (scheduleData[3].sessions.length > 0) {
-            scheduleData[3].sessions.push(legSession);
-        } else if (scheduleData[0].sessions.length === 0) {
-            scheduleData[0].sessions.push(legSession);
-            scheduleData[0].focus = "Force/Jambes";
+        // 1. Sortie Longue (Dimanche)
+        const longRun = runs.find(r => r.type.includes("Sortie Longue") || r.type.includes("Endurance"));
+        if (longRun) {
+            scheduleData[6].sessions.push(longRun);
+            scheduleData[6].focus = "Volume";
         }
-    }
 
-    let gymIdx = 0;
-    const fillOrder = [0, 2, 4, 5, 3]; 
-    
-    fillOrder.forEach(dayIdx => {
-        if (scheduleData[dayIdx].sessions.length === 0 && gymIdx < otherGyms.length) {
-            scheduleData[dayIdx].sessions.push(otherGyms[gymIdx]);
-            scheduleData[dayIdx].focus = "Renforcement"; 
-            gymIdx++;
+        // 2. Séance Qualité (Mardi)
+        const qualityRun = runs.find(r => (r.intensity === 'high' || r.intensity === 'medium') && r.id !== longRun?.id);
+        if (qualityRun) {
+            scheduleData[1].sessions.push(qualityRun);
+            scheduleData[1].focus = "Intensité";
         }
-    });
-    
-    if (gymIdx < otherGyms.length) {
-        const doubleDays = [3, 5, 2];
-        for (let d of doubleDays) {
-            if (gymIdx < otherGyms.length && scheduleData[d].sessions.length === 1 && scheduleData[d].sessions[0].category === 'run') {
-                scheduleData[d].sessions.push(otherGyms[gymIdx]);
-                gymIdx++;
+
+        // 3. Muscu (Mercredi ou Vendredi)
+        const heavySession = gyms.find(g => g.type.includes("Sled") || g.type.includes("Jambes") || g.type.includes("Legs"));
+        const otherGyms = gyms.filter(g => g.id !== heavySession?.id);
+
+        if (heavySession) {
+            if (scheduleData[4].sessions.length === 0) {
+                scheduleData[4].sessions.push(heavySession);
+                scheduleData[4].focus = "Force";
+            } else if (scheduleData[3].sessions.length === 0) {
+                scheduleData[3].sessions.push(heavySession);
+                scheduleData[3].focus = "Force";
             }
         }
+
+        // 4. Remplissage
+        let gymIdx = 0;
+        const fillOrder = [0, 2, 3, 5]; 
+        
+        fillOrder.forEach(dayIdx => {
+            if (scheduleData[dayIdx].sessions.length === 0 && gymIdx < otherGyms.length) {
+                scheduleData[dayIdx].sessions.push(otherGyms[gymIdx]);
+                scheduleData[dayIdx].focus = "Renfo"; 
+                gymIdx++;
+            }
+        });
+
+        const easyRuns = runs.filter(r => r.id !== longRun?.id && r.id !== qualityRun?.id);
+        let runIdx = 0;
+        [3, 5, 0, 2].forEach(dayIdx => { 
+            if (runIdx < easyRuns.length) {
+                 if (scheduleData[dayIdx].sessions.length === 0) {
+                     scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                     scheduleData[dayIdx].focus = "Endurance";
+                     runIdx++;
+                 } 
+                 else if (scheduleData[dayIdx].sessions.length === 1 && scheduleData[dayIdx].sessions[0].category !== 'run') {
+                     const s = scheduleData[dayIdx].sessions[0];
+                     if (!s.type.includes("Jambes")) {
+                         scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                         runIdx++;
+                     }
+                 }
+            }
+        });
     }
 
     return scheduleData.map(day => {
         if (day.sessions.length === 0) return { day: day.dayName, activity: "Repos", focus: "Récupération", sessionIds: [] };
-        
         const names = day.sessions.map(s => s.type).join(' + ');
         const ids = day.sessions.map(s => s.id);
-        
         return { 
             day: day.dayName, 
             activity: names, 
@@ -177,6 +252,11 @@ const RUN_PROTOCOLS = {
     { name: "Échauffement Complet", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "stretching run", instructions: "15' footing lent + 5' de gammes (talons-fesses, montées de genoux, pas chassés) pour activer l'élasticité." },
     { name: "Fractions 30/30", sets: "2 blocs", reps: "8-10 reps", rest: "2' entre blocs", rpe: 8, note: "VMA", imageKeyword: "track running", instructions: "30 sec vite (dynamique) / 30 sec trot lent. Ne partez pas au sprint, visez la régularité." },
     { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Lactate clearance", imageKeyword: "cooling down", instructions: "Trot très lent pour faire redescendre la fréquence cardiaque et rincer les muscles." }
+  ],
+  interval_long: [
+    { name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "road running", instructions: "Footing + 3 accélérations progressives." },
+    { name: "Fractions Longues", sets: "4-5", reps: "3-4 min", rest: "2 min", rpe: 8, note: "VMA Longue", imageKeyword: "fast run", instructions: "90-95% VMA. C'est dur mais tenable sur la durée." },
+    { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Cool down", imageKeyword: "sunset run", instructions: "Relâchez tout." }
   ],
   threshold: [
     { name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Aérobie", imageKeyword: "road running", instructions: "Footing progressif. Finir par 2-3 accélérations sur 20 secondes pour monter le cardio." },
@@ -221,77 +301,103 @@ const STRENGTH_PROTOCOLS = {
   },
   hypertrophy: {
     push: [ 
-      { name: "Développé Couché Haltères", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Amplitude max.", imageKeyword: "bench press dumbbells", instructions: "Plus d'amplitude qu'à la barre. Bien étirer les pecs en bas. Resserrer en haut sans claquer les haltères.", imageUrl: "https://i.postimg.cc/pLfpNd9Q/De-veloppe-Couche-Halte-res.png" },
-      { name: "Développé Militaire", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Contrôle.", imageKeyword: "shoulder press", instructions: "Assis ou debout. Contrôlez la descente (3 sec) pour maximiser le temps sous tension.", imageUrl: "https://i.postimg.cc/T1vJpxSR/dev_militaire.png" },
-      { name: "Dips", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Finisher.", imageKeyword: "dips", instructions: "Penchez-vous en avant pour cibler les pecs. Descendez jusqu'à ce que les épaules soient sous les coudes.", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
-      { name: "Élévations Latérales", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Faisceau Latéral.", imageKeyword: "gym workout", instructions: "Bras légèrement fléchis. Montez les coudes, pas les mains. Imaginez verser une carafe d'eau en haut.", imageUrl: "https://i.postimg.cc/Xq6kpWh7/elevation_late_rale.png" },
-      { name: "Extensions Triceps Poulie", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Isolation.", imageKeyword: "triceps", instructions: "Coudes collés au corps. Seuls les avant-bras bougent. Contractez fort en bas.", imageUrl: "https://i.postimg.cc/prQYj7bn/Extensions_Triceps_Poulie.png" },
+      { name: "Développé Couché Haltères", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Pecs / Triceps", imageKeyword: "bench press dumbbells", instructions: "Plus d'amplitude qu'à la barre. Bien étirer les pecs en bas. Resserrer en haut sans claquer les haltères.", imageUrl: "https://i.postimg.cc/pLfpNd9Q/De-veloppe-Couche-Halte-res.png" },
+      { name: "Développé Militaire", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Épaules", imageKeyword: "shoulder press", instructions: "Assis ou debout. Contrôlez la descente (3 sec) pour maximiser le temps sous tension.", imageUrl: "https://i.postimg.cc/T1vJpxSR/dev_militaire.png" },
+      { name: "Extensions Triceps Poulie", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Triceps", imageKeyword: "triceps", instructions: "Coudes collés au corps. Seuls les avant-bras bougent. Contractez fort en bas.", imageUrl: "https://i.postimg.cc/prQYj7bn/Extensions_Triceps_Poulie.png" },
+      { name: "Élévations Latérales", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Deltoïde Latéral", imageKeyword: "gym workout", instructions: "Bras légèrement fléchis. Montez les coudes, pas les mains. Imaginez verser une carafe d'eau en haut.", imageUrl: "https://i.postimg.cc/Xq6kpWh7/elevation_late_rale.png" },
       { name: "Écarté Poulie Vis-à-vis", sets: 3, reps: "15-20", rest: "45s", rpe: 9, note: "Finition Pecs.", imageKeyword: "cable crossover", instructions: "Cherchez la contraction maximale en croisant les mains. Gardez les coudes ouverts.", imageUrl: "https://i.postimg.cc/9M7Bm0Lf/ecarte_poulie.png" }
     ],
     pull: [
-      { name: "Tirage Vertical", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Largeur dos.", imageKeyword: "lat pulldown", instructions: "Tirez la barre vers le haut de la poitrine. Sortez la cage thoracique. Ne balancez pas le buste.", imageUrl: "https://i.postimg.cc/Lsg7r9F4/tirage_vertical.png" },
-      { name: "Rowing Barre", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Épaisseur.", imageKeyword: "rowing", instructions: "Buste penché à 45°. Tirez vers le nombril en resserrant les omoplates.", imageUrl: "https://i.postimg.cc/3xcVSyVw/rowing.png" },
-      { name: "Face Pulls", sets: 4, reps: "15", rest: "60s", rpe: 7, note: "Santé épaules.", imageKeyword: "gym facepull", instructions: "Corde à la poulie haute. Tirez vers le visage en écartant les mains. Cible l'arrière d'épaule.", imageUrl: "https://i.postimg.cc/QxSR7YqH/Face_Pulls.png" },
-      { name: "Curl Barre", sets: 4, reps: "12", rest: "60s", rpe: 9, note: "Biceps.", imageKeyword: "bicep curl", instructions: "Coudes fixes. Ne pas utiliser le dos pour lancer la barre.", imageUrl: "https://i.postimg.cc/fT56dqvY/curl_barre.png" },
-      { name: "Hammer Curls", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Brachial.", imageKeyword: "hammer curl", instructions: "Prise marteau (neutre). Cible l'épaisseur du bras et l'avant-bras.", imageUrl: "https://i.postimg.cc/QdtvJg6n/Hammer_curl.png" },
-      { name: "Crunchs", sets: 4, reps: "20", rest: "45s", rpe: 8, note: "Abdos.", imageKeyword: "abs", instructions: "Enroulez la colonne, ne tirez pas sur la nuque. Soufflez en montant.", imageUrl: "https://i.postimg.cc/7Z6jn1Bj/crunchs.png" }
+      { name: "Tirage Vertical", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Dos Largeur", imageKeyword: "lat pulldown", instructions: "Tirez la barre vers le haut de la poitrine. Sortez la cage thoracique. Ne balancez pas le buste.", imageUrl: "https://i.postimg.cc/Lsg7r9F4/tirage_vertical.png" },
+      { name: "Rowing Barre", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Dos Épaisseur", imageKeyword: "rowing", instructions: "Buste penché à 45°. Tirez vers le nombril en resserrant les omoplates.", imageUrl: "https://i.postimg.cc/3xcVSyVw/rowing.png" },
+      { name: "Curl Barre", sets: 4, reps: "12", rest: "60s", rpe: 9, note: "Biceps", imageKeyword: "bicep curl", instructions: "Coudes fixes. Ne pas utiliser le dos pour lancer la barre.", imageUrl: "https://i.postimg.cc/fT56dqvY/curl_barre.png" },
+      { name: "Hammer Curls", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Brachial", imageKeyword: "hammer curl", instructions: "Prise marteau (neutre). Cible l'épaisseur du bras et l'avant-bras.", imageUrl: "https://i.postimg.cc/QdtvJg6n/Hammer_curl.png" },
+      { name: "Crunchs", sets: 4, reps: "20", rest: "45s", rpe: 8, note: "Abdos", imageKeyword: "abs", instructions: "Enroulez la colonne, ne tirez pas sur la nuque. Soufflez en montant.", imageUrl: "https://i.postimg.cc/7Z6jn1Bj/crunchs.png" }
     ],
     legs: [ 
-      { name: "Squat", sets: 4, reps: "10-12", rest: "3 min", rpe: 8, note: "Base jambes.", imageKeyword: "squat", instructions: "Amplitude complète. Le creux de la hanche doit passer sous le genou si la mobilité le permet.", imageUrl: "https://i.postimg.cc/ry7vNRBY/squat.png" },
-      { name: "Presse à cuisses", sets: 4, reps: "12-15", rest: "2 min", rpe: 9, note: "Volume.", imageKeyword: "leg press", instructions: "Pieds largeur épaules. Descendez genoux vers épaules. Ne verrouillez pas les genoux en haut.", imageUrl: "https://i.postimg.cc/tgD5S8YP/legs_press.png" },
-      { name: "Fentes Marchées", sets: 3, reps: "12/jambe", rest: "90s", rpe: 8, note: "Unilatéral.", imageKeyword: "lunges", instructions: "Faites des pas de géant. Le genou arrière frôle le sol. Gardez le rythme.", imageUrl: "https://i.postimg.cc/FKGZWw7S/fente_marche.png" },
-      { name: "Leg Curl", sets: 4, reps: "15", rest: "60s", rpe: 9, note: "Ischios.", imageKeyword: "leg curl", instructions: "Contrôlez la phase retour (excentrique). Ne décollez pas les hanches du banc.", imageUrl: "https://i.postimg.cc/6Qz0jFyn/Legs_curl.png" },
-      { name: "Leg Extension", sets: 3, reps: "20", rest: "45s", rpe: 10, note: "Finition Quads.", imageKeyword: "leg extension", instructions: "Contrôlez la descente. Brûlure garantie.", imageUrl: "https://i.postimg.cc/fk4jSNgv/legs_extension.png" },
-      { name: "Mollets Debout", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Volume.", imageKeyword: "calves", instructions: "Extension maximale sur la pointe des pieds. Pause 1sec en haut, 1sec en bas.", imageUrl: "https://i.postimg.cc/brS9vJL1/mollet_debout.png" }
+      { name: "Squat", sets: 4, reps: "10-12", rest: "3 min", rpe: 8, note: "Base Jambes", imageKeyword: "squat", instructions: "Amplitude complète. Le creux de la hanche doit passer sous le genou si la mobilité le permet.", imageUrl: "https://i.postimg.cc/ry7vNRBY/squat.png" },
+      { name: "Presse à cuisses", sets: 4, reps: "12-15", rest: "2 min", rpe: 9, note: "Volume Quads", imageKeyword: "leg press", instructions: "Pieds largeur épaules. Descendez genoux vers épaules. Ne verrouillez pas les genoux en haut.", imageUrl: "https://i.postimg.cc/tgD5S8YP/legs_press.png" },
+      { name: "Fentes Marchées", sets: 3, reps: "12/jambe", rest: "90s", rpe: 8, note: "Unilatéral", imageKeyword: "lunges", instructions: "Faites des pas de géant. Le genou arrière frôle le sol. Gardez le rythme.", imageUrl: "https://i.postimg.cc/FKGZWw7S/fente_marche.png" },
+      { name: "Leg Curl", sets: 4, reps: "15", rest: "60s", rpe: 9, note: "Ischios", imageKeyword: "leg curl", instructions: "Contrôlez la phase retour (excentrique). Ne décollez pas les hanches du banc.", imageUrl: "https://i.postimg.cc/6Qz0jFyn/Legs_curl.png" },
+      { name: "Mollets Debout", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Mollets", imageKeyword: "calves", instructions: "Extension maximale sur la pointe des pieds. Pause 1sec en haut, 1sec en bas.", imageUrl: "https://i.postimg.cc/brS9vJL1/mollet_debout.png" }
     ],
     shoulders_arms: [
-      { name: "Développé Militaire", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Base Épaules.", imageKeyword: "military press", instructions: "Barre ou haltères. Dos droit, abdos serrés. Poussez la charge au-dessus de la tête sans cambrer.", imageUrl: "" },
-      { name: "Élévations Latérales Haltères", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Faisceau Latéral.", imageKeyword: "lateral raise", instructions: "Coude légèrement fléchi. Montez les coudes, pas les mains. Contrôlez la descente.", imageUrl: "" },
-      { name: "Curl Biceps Incliné", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Chef Long Biceps.", imageKeyword: "incline curl", instructions: "Banc à 45°. Laissez les bras pendre derrière le corps pour étirer le biceps. Gardez les coudes fixes.", imageUrl: "" },
-      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Chef Latéral Triceps.", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "" },
-      { name: "Élévations Latérales Poulie", sets: 3, reps: "15", rest: "45s", rpe: 9, note: "Tension continue.", imageKeyword: "cable lateral raise", instructions: "Poulie derrière le dos. Mouvement fluide, tension constante sur l'épaule latérale.", imageUrl: "" },
-      { name: "Extension Triceps Barre", sets: 3, reps: "10-12", rest: "60s", rpe: 8, note: "Masse Triceps.", imageKeyword: "skullcrusher", instructions: "Allongé. Descendez la barre vers le front (ou derrière la tête). Gardez les coudes serrés.", imageUrl: "" },
-      { name: "Curl Alterné Haltères", sets: 3, reps: "12/bras", rest: "60s", rpe: 8, note: "Finition Biceps.", imageKeyword: "dumbbell curl", instructions: "Debout. Supination (tournez la paume vers le haut) en montant. Ne balancez pas le buste.", imageUrl: "" }
+      { name: "Développé Militaire", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Base Épaules", imageKeyword: "military press", instructions: "Barre ou haltères. Dos droit, abdos serrés. Poussez la charge au-dessus de la tête sans cambrer.", imageUrl: "" },
+      { name: "Élévations Latérales Haltères", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Deltoïde Latéral", imageKeyword: "lateral raise", instructions: "Coude légèrement fléchi. Montez les coudes, pas les mains. Contrôlez la descente.", imageUrl: "" },
+      { name: "Curl Biceps Incliné", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Biceps Chef Long", imageKeyword: "incline curl", instructions: "Banc à 45°. Laissez les bras pendre derrière le corps pour étirer le biceps. Gardez les coudes fixes.", imageUrl: "" },
+      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Triceps", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "" },
+      { name: "Curl Marteau", sets: 3, reps: "12", rest: "60s", rpe: 8, note: "Brachial", imageKeyword: "hammer curl", instructions: "Prise marteau (neutre). Cible l'épaisseur du bras et l'avant-bras.", imageUrl: "https://i.postimg.cc/QdtvJg6n/Hammer_curl.png" }
     ],
     chest_back: [
-      { name: "Développé Incliné", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Haut Pecs.", imageKeyword: "incline bench", instructions: "Banc à 30°. Cible le haut des pectoraux. Touchez la poitrine, poussez.", imageUrl: "" },
-      { name: "Tirage Horizontal", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Dos.", imageKeyword: "seated row", instructions: "Dos droit. Tirez la poignée au bas ventre. Sortez la poitrine.", imageUrl: "" },
-      { name: "T-Bar Row", sets: 3, reps: "12", rest: "90s", rpe: 9, note: "Épaisseur Dos.", imageKeyword: "t bar row", instructions: "Dos plat impératif. Tirez avec les coudes.", imageUrl: "" },
-      { name: "Écarté Couché", sets: 3, reps: "15", rest: "60s", rpe: 9, note: "Isolation.", imageKeyword: "flyes", instructions: "Ouvrez la cage thoracique. Gardez une légère flexion des coudes.", imageUrl: "" },
-      { name: "Pull-over", sets: 3, reps: "15", rest: "60s", rpe: 8, note: "Dos/Pecs.", imageKeyword: "pullover", instructions: "Allongé en travers du banc. Descendez l'haltère derrière la tête bras tendus.", imageUrl: "" },
-      { name: "Shrugs", sets: 4, reps: "15", rest: "45s", rpe: 8, note: "Trapèzes.", imageKeyword: "shrugs", instructions: "Haussement d'épaules. Ne roulez pas les épaules, juste haut/bas.", imageUrl: "" }
+      { name: "Développé Incliné", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Haut Pecs", imageKeyword: "incline bench", instructions: "Banc à 30°. Cible le haut des pectoraux. Touchez la poitrine, poussez.", imageUrl: "" },
+      { name: "Tirage Horizontal", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Dos", imageKeyword: "seated row", instructions: "Dos droit. Tirez la poignée au bas ventre. Sortez la poitrine.", imageUrl: "" },
+      { name: "Écarté Couché", sets: 3, reps: "15", rest: "60s", rpe: 9, note: "Isolation Pecs", imageKeyword: "flyes", instructions: "Ouvrez la cage thoracique. Gardez une légère flexion des coudes.", imageUrl: "" },
+      { name: "Pull-over", sets: 3, reps: "15", rest: "60s", rpe: 8, note: "Dos/Pecs", imageKeyword: "pullover", instructions: "Allongé en travers du banc. Descendez l'haltère derrière la tête bras tendus.", imageUrl: "" },
+      { name: "Shrugs", sets: 4, reps: "15", rest: "45s", rpe: 8, note: "Trapèzes", imageKeyword: "shrugs", instructions: "Haussement d'épaules. Ne roulez pas les épaules, juste haut/bas.", imageUrl: "" }
     ]
   },
   street_workout: {
     push: [
-        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps/Épaules", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ, dépression scapulaire. Descendez jusqu'à ce que les épaules passent sous les coudes (90°+).", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
-        { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Deltoïdes Antérieurs", imageKeyword: "pike pushup", instructions: "Corps en V inversé. Avancez la tête devant les mains en descendant (tripode). Poussez fort pour revenir en alignant les oreilles avec les bras.", imageUrl: "https://i.postimg.cc/nzSktsnG/Pike-Push-ups.png" },
-        { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Bras tendus / Protraction", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant autant que possible. Gardez le dos rond (protraction) en haut du mouvement.", imageUrl: "https://i.postimg.cc/2y2fY7V0/Pseudo_Planche_Push_ups.png" },
-        { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps Focus", imageKeyword: "diamond pushups", instructions: "Mains jointes sous le sternum. Coudes le long du corps. Amplitude complète.", imageUrl: "https://i.postimg.cc/P5ZTpZcL/pompe_diamant.png" }
+        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ. Descendez à 90°.", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
+        { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Épaules", imageKeyword: "pike pushup", instructions: "Corps en V inversé.", imageUrl: "https://i.postimg.cc/nzSktsnG/Pike-Push-ups.png" },
+        { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Avant d'épaule", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant.", imageUrl: "https://i.postimg.cc/2y2fY7V0/Pseudo_Planche_Push_ups.png" },
+        { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps", imageKeyword: "diamond pushups", instructions: "Mains jointes sous la poitrine.", imageUrl: "https://i.postimg.cc/P5ZTpZcL/pompe_diamant.png" }
     ],
     pull: [
-        { name: "Tractions Pronation", sets: 4, reps: "8-12", rest: "2 min", rpe: 9, note: "Grand Dorsal", imageKeyword: "pullups", instructions: "Prise légèrement plus large que les épaules. Initiez le mouvement par les omoplates (dépression). Menton au-dessus de la barre.", imageUrl: "" },
-        { name: "Tractions Australiennes", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Rhomboïdes / Trapèzes", imageKeyword: "australian pullups", instructions: "Barre basse. Corps gainé, talons au sol. Tirez la barre vers le bas de la poitrine. Serrez les omoplates en haut.", imageUrl: "" },
-        { name: "Chin-ups", sets: 3, reps: "8-10", rest: "90s", rpe: 9, note: "Biceps / Dos", imageKeyword: "chinups", instructions: "Prise supination (paumes vers soi). Focus sur la fermeture de l'angle du coude. Extension complète en bas.", imageUrl: "" },
-        { name: "Skin The Cat", sets: 3, reps: "3-5", rest: "2 min", rpe: 8, note: "Mobilité / Force Bras tendus", imageKeyword: "skin the cat", instructions: "Passez les jambes entre les bras, enroulez le corps jusqu'à l'étirement maximal des épaules. Revenez en contrôlant. Excellent pour la santé des épaules.", imageUrl: "" }
+        { name: "Tractions Pronation", sets: 4, reps: "8-12", rest: "2 min", rpe: 9, note: "Dos", imageKeyword: "pullups", instructions: "Prise large. Menton au-dessus de la barre.", imageUrl: "" },
+        { name: "Tractions Australiennes", sets: 4, reps: "12", rest: "90s", rpe: 8, note: "Rhomboïdes", imageKeyword: "australian pullups", instructions: "Barre basse. Corps gainé.", imageUrl: "" },
+        { name: "Chin-ups", sets: 3, reps: "8-10", rest: "90s", rpe: 9, note: "Biceps", imageKeyword: "chinups", instructions: "Prise supination.", imageUrl: "" },
+        { name: "Skin The Cat", sets: 3, reps: "3-5", rest: "2 min", rpe: 8, note: "Mobilité", imageKeyword: "skin the cat", instructions: "Enroulez le corps. Étirement épaules.", imageUrl: "" }
     ],
     legs: [
-        { name: "Pistol Squat (Assisté ou Libre)", sets: 4, reps: "5-8/jambe", rest: "2 min", rpe: 9, note: "Force Unilatérale", imageKeyword: "pistol squat", instructions: "Squat sur une jambe. La jambe libre est tendue devant. Gardez le talon au sol. Utilisez un poteau pour l'équilibre si nécessaire.", imageUrl: "" },
-        { name: "Fentes Sautées", sets: 4, reps: "20 total", rest: "90s", rpe: 8, note: "Explosivité", imageKeyword: "jump lunges", instructions: "Explosez vers le haut à chaque répétition. Changez de jambe en l'air. Amortissez la réception.", imageUrl: "" },
-        { name: "Squat Bulgare", sets: 3, reps: "10/jambe", rest: "90s", rpe: 8, note: "Chaîne Postérieure", imageKeyword: "bulgarian split squat", instructions: "Pied arrière surélevé. Descendez le genou arrière proche du sol. Gardez le buste droit pour les quads, penché pour les fessiers.", imageUrl: "" },
-        { name: "Glute Bridge Unilatéral", sets: 3, reps: "15/jambe", rest: "60s", rpe: 8, note: "Fessiers / Ischios", imageKeyword: "glute bridge", instructions: "Dos au sol, une jambe levée. Poussez dans le talon au sol pour lever les hanches. Contractez fort le fessier en haut.", imageUrl: "" }
+        { name: "Pistol Squat", sets: 4, reps: "5-8/jambe", rest: "2 min", rpe: 9, note: "Unilatéral", imageKeyword: "pistol squat", instructions: "Squat sur une jambe. Assisté si besoin.", imageUrl: "" },
+        { name: "Fentes Sautées", sets: 4, reps: "20", rest: "90s", rpe: 8, note: "Explosivité", imageKeyword: "jump lunges", instructions: "Alternez en l'air. Réception souple.", imageUrl: "" },
+        { name: "Squat Bulgare", sets: 3, reps: "10/jambe", rest: "90s", rpe: 8, note: "Chaîne Post.", imageKeyword: "bulgarian split squat", instructions: "Pied arrière surélevé.", imageUrl: "" },
+        { name: "Glute Bridge Unilatéral", sets: 3, reps: "15/jambe", rest: "60s", rpe: 8, note: "Fessiers", imageKeyword: "glute bridge", instructions: "Dos au sol, une jambe levée.", imageUrl: "" }
     ],
     skills_core: [
-        { name: "Muscle-Up Transition (Negatives)", sets: 5, reps: "3-5", rest: "3 min", rpe: 9, note: "Technique de tirage haut", imageKeyword: "muscle up", instructions: "Montez au-dessus de la barre (saut ou chaise) et descendez le plus lentement possible la transition (passage du buste vers les bras).", imageUrl: "" },
-        { name: "L-Sit Hold", sets: 4, reps: "Max sec", rest: "90s", rpe: 9, note: "Compression Abdominale", imageKeyword: "l-sit", instructions: "En appui sur les mains (sol ou barres //), levez les jambes tendues à l'équerre. Poussez fort dans les épaules (dépression).", imageUrl: "" },
-        { name: "Toes to Bar (ou Genoux)", sets: 4, reps: "8-12", rest: "90s", rpe: 8, note: "Flexion de hanche", imageKeyword: "toes to bar", instructions: "Suspendu, amenez les orteils toucher la barre. Gardez les jambes tendues si possible. Évitez le balancement (kipping).", imageUrl: "" },
-        { name: "Hollow Body Hold", sets: 3, reps: "45-60s", rest: "60s", rpe: 7, note: "Gainage Intégral", imageKeyword: "hollow body", instructions: "Dos plaqué au sol (bas du dos). Décollez épaules et jambes. Corps en forme de banane. Indispensable pour la tension corporelle.", imageUrl: "" }
+        { name: "Muscle-Up Transition", sets: 5, reps: "3-5", rest: "3 min", rpe: 9, note: "Technique", imageKeyword: "muscle up", instructions: "Travail du passage buste sur la barre.", imageUrl: "" },
+        { name: "L-Sit Hold", sets: 4, reps: "Max sec", rest: "90s", rpe: 9, note: "Gainage", imageKeyword: "l-sit", instructions: "Jambes à l'équerre.", imageUrl: "" },
+        { name: "Toes to Bar", sets: 4, reps: "8-12", rest: "90s", rpe: 8, note: "Abdos", imageKeyword: "toes to bar", instructions: "Pieds à la barre.", imageUrl: "" },
+        { name: "Hollow Body", sets: 3, reps: "45s", rest: "60s", rpe: 7, note: "Gainage", imageKeyword: "hollow body", instructions: "Dos plaqué au sol.", imageUrl: "" }
     ],
     full_body: [
-        { name: "Burpees", sets: 4, reps: "15", rest: "60s", rpe: 8, note: "Conditioning", imageKeyword: "burpees", instructions: "Pompe stricte, ramené dynamique, saut vertical. Rythme constant.", imageUrl: "" },
-        { name: "Tractions Supination", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Tirage", imageKeyword: "chinups", instructions: "Focus volume.", imageUrl: "" },
-        { name: "Dips", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Poussée", imageKeyword: "dips", instructions: "Focus volume.", imageUrl: "" },
-        { name: "Squats", sets: 4, reps: "25", rest: "60s", rpe: 7, note: "Endurance musculaire", imageKeyword: "air squat", instructions: "Rythme rapide mais amplitude complète.", imageUrl: "" }
+        { name: "Burpees", sets: 4, reps: "15", rest: "60s", rpe: 8, note: "Cardio", imageKeyword: "burpees", instructions: "Rythme constant.", imageUrl: "" },
+        { name: "Tractions", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Tirage", imageKeyword: "pullups", instructions: "Volume.", imageUrl: "" },
+        { name: "Dips", sets: 4, reps: "Max-2", rest: "90s", rpe: 9, note: "Poussée", imageKeyword: "dips", instructions: "Volume.", imageUrl: "" },
+        { name: "Squats", sets: 4, reps: "25", rest: "60s", rpe: 7, note: "Jambes", imageKeyword: "air squat", instructions: "Rapide.", imageUrl: "" }
+    ]
+  },
+  hyrox: {
+    sleds_strength: [
+        { name: "Sled Push (Lourd)", sets: 5, reps: "20m", rest: "2 min", rpe: 9, note: "Puissance Poussée", imageKeyword: "sled push", instructions: "Bras tendus ou pliés, dos plat. Poussez avec les jambes. Charge lourde (simu Hyrox : 125-175kg).", imageUrl: "" },
+        { name: "Sled Pull (Corde)", sets: 5, reps: "20m", rest: "2 min", rpe: 9, note: "Chaîne Postérieure", imageKeyword: "sled pull", instructions: "Tirez le traîneau avec une corde ou harnais. Reculez en gardant le dos droit et les jambes fléchies.", imageUrl: "" },
+        { name: "Farmers Carry", sets: 4, reps: "40m", rest: "90s", rpe: 8, note: "Grip / Gainage", imageKeyword: "farmers walk", instructions: "Deux kettlebells lourdes (24/32kg). Marchez vite, épaules en arrière, sans dandiner.", imageUrl: "" },
+        { name: "Dead Hang", sets: 3, reps: "Max sec", rest: "60s", rpe: 9, note: "Grip Endurance", imageKeyword: "dead hang", instructions: "Suspendez-vous à une barre. Relâchez tout sauf les mains.", imageUrl: "" }
+    ],
+    functional_endurance: [
+        { name: "Wall Balls", sets: 5, reps: "20", rest: "60s", rpe: 8, note: "Cardio / Jambes", imageKeyword: "wall balls", instructions: "Squat complet, lancez la balle sur la cible (3m). Enchaînez la réception avec le squat suivant.", imageUrl: "" },
+        { name: "Burpee Broad Jumps", sets: 4, reps: "10-15", rest: "90s", rpe: 9, note: "Explosivité", imageKeyword: "burpee jump", instructions: "Faites un burpee, puis un saut en longueur vers l'avant. Répétez sur la distance.", imageUrl: "" },
+        { name: "Box Jumps Over", sets: 4, reps: "15", rest: "60s", rpe: 8, note: "Plyométrie", imageKeyword: "box jump", instructions: "Sautez sur la boite, passez de l'autre côté. Rythme constant.", imageUrl: "" },
+        { name: "Hand Release Push-ups", sets: 4, reps: "15", rest: "60s", rpe: 7, note: "Endurance Poussée", imageKeyword: "pushups", instructions: "Décollez les mains du sol en bas du mouvement. Poussez explosif.", imageUrl: "" }
+    ],
+    legs_compromised: [
+        { name: "Sandbag Lunges", sets: 4, reps: "20m", rest: "90s", rpe: 9, note: "Jambes sous charge", imageKeyword: "sandbag lunges", instructions: "Sac sur les épaules (10-20kg). Fentes marchées. Genou arrière touche le sol.", imageUrl: "" },
+        { name: "Goblet Squats", sets: 4, reps: "15", rest: "60s", rpe: 8, note: "Volume Jambes", imageKeyword: "goblet squat", instructions: "KB contre la poitrine. Squat profond. Gardez le dos droit.", imageUrl: "" },
+        { name: "Step Ups (Lestés)", sets: 3, reps: "10/jambe", rest: "60s", rpe: 8, note: "Unilatéral", imageKeyword: "step up", instructions: "Montez sur une box avec une KB ou Dumbbell. Extension complète de la hanche en haut.", imageUrl: "" },
+        { name: "Calf Raises", sets: 4, reps: "20", rest: "45s", rpe: 7, note: "Mollets", imageKeyword: "calf raise", instructions: "Indispensable pour la poussée du traîneau.", imageUrl: "" }
+    ],
+    ergs_power: [
+        { name: "Rowing Intervals", sets: 5, reps: "500m", rest: "2 min", rpe: 9, note: "Puissance Aérobie", imageKeyword: "rowing machine", instructions: "Tirage puissant. Cadence ~28-30 s/m.", imageUrl: "" },
+        { name: "SkiErg (ou Band Pulls)", sets: 5, reps: "500m (ou 2min)", rest: "2 min", rpe: 9, note: "Haut du corps", imageKeyword: "skierg", instructions: "Utilisez le poids du corps pour tirer les poignées vers le bas. Flexion de hanche.", imageUrl: "" },
+        { name: "Thrusters (KB/Barre)", sets: 4, reps: "12", rest: "90s", rpe: 9, note: "Transfert Wall Ball", imageKeyword: "thrusters", instructions: "Front squat + développé au dessus de la tête en un seul mouvement fluide.", imageUrl: "" },
+        { name: "Kettlebell Swings", sets: 4, reps: "20", rest: "60s", rpe: 8, note: "Hanche / Cardio", imageKeyword: "kettlebell swing", instructions: "Mouvement de balancier initié par les hanches, pas les épaules.", imageUrl: "" }
+    ],
+    full_race_sim: [
+        { name: "Run 1km (Pré-fatigue)", sets: 1, reps: "1km", rest: "0", rpe: 8, note: "Seuil", imageKeyword: "treadmill run", instructions: "Allure course cible.", imageUrl: "" },
+        { name: "Sled Push", sets: 2, reps: "25m", rest: "1 min", rpe: 9, note: "Force", imageKeyword: "sled push", instructions: "Poussez lourd.", imageUrl: "" },
+        { name: "Run 1km", sets: 1, reps: "1km", rest: "0", rpe: 8, note: "Seuil", imageKeyword: "running", instructions: "Reprenez le rythme immédiatement.", imageUrl: "" },
+        { name: "Wall Balls", sets: 1, reps: "50", rest: "2 min", rpe: 9, note: "Mental", imageKeyword: "wall balls", instructions: "Série longue. Gérez le souffle.", imageUrl: "" }
     ]
   }
 };
@@ -304,15 +410,11 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(null);
   
-  const isRun = category === 'run'; // Détection si c'est du Run
-
-  // Ref pour le son
+  const isRun = category === 'run'; 
   const audioRef = useRef(null);
   
-  // Initialisation des séries
   useEffect(() => {
     if (exercise && !isRun) {
-        // Tenter d'extraire le nombre de séries
         let setsCount = 1;
         if (typeof exercise.sets === 'number') {
             setsCount = exercise.sets;
@@ -324,7 +426,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     }
   }, [exercise, isRun]);
 
-  // Logique du Timer
   useEffect(() => {
     let interval = null;
     if (isTimerRunning && timer > 0) {
@@ -332,19 +433,16 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
             setTimer((prev) => prev - 1);
         }, 1000);
     } else if (timer === 0 && isTimerRunning) {
-        // Fin du timer
         setIsTimerRunning(false);
         setActiveSetIndex(null);
         if (audioRef.current) {
             audioRef.current.play().catch(e => console.log("Audio play failed", e));
         }
-        // Vibration si sur mobile
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timer]);
 
-  // Nouveau : Fonction Skip (Passer le repos sans son)
   const handleSkip = () => {
     setIsTimerRunning(false);
     setTimer(0);
@@ -358,8 +456,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     setSetsStatus(newStatus);
 
     if (isChecking) {
-        // Lancer le timer si on vient de cocher (repos)
-        // Sauf si c'est la dernière série
         if (index < setsStatus.length - 1) {
             const restSeconds = parseRestTime(exercise.rest);
             if (restSeconds > 0) {
@@ -369,7 +465,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
             }
         }
     } else {
-        // Si on décoche, on annule le timer si c'était celui en cours
         if (activeSetIndex === index) {
             setIsTimerRunning(false);
             setTimer(0);
@@ -379,14 +474,11 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
   };
 
   const handleComplete = () => {
-      // Pour Muscu: on valide l'exercice spécifique
-      // Pour Run: on valide la séance entière (exerciseId est sessionId dans ce cas)
       if (isRun) {
-          onComplete(exerciseId); // ID session
+          onComplete(exerciseId); 
       } else {
-          // Construit l'ID unique de l'exercice pour le valider individuellement
           const uniqueExerciseId = `${exerciseId}-ex-${exerciseIndex}`;
-          onComplete(uniqueExerciseId, true); // true = c'est un exercice
+          onComplete(uniqueExerciseId, true); 
       }
       onClose();
   };
@@ -399,65 +491,34 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
 
   if (!exercise) return null;
 
-  // Si c'est du Run, on n'utilise pas l'image du tout
   const imageSrc = !isRun && (exercise.imageUrl && exercise.imageUrl !== "" && !imgError) 
     ? exercise.imageUrl 
     : `https://source.unsplash.com/800x600/?fitness,${exercise.imageKeyword}`;
 
   const objectFitClass = "object-cover opacity-90";
-  
-  // Vérifier si toutes les séries sont validées (pour Muscu)
   const allSetsDone = !isRun && setsStatus.length > 0 && setsStatus.every(Boolean);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col relative">
-        
-        {/* Élément Audio invisible pour le Bip */}
         <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 
-        {/* --- HEADER DIFFÉRENT SI RUN OU MUSCU --- */}
         {isRun ? (
-            // HEADER RUN (ÉPURÉ SANS IMAGE)
             <div className="bg-slate-50 p-6 border-b border-slate-100 relative">
-                 <button 
-                    onClick={onClose} 
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"
-                >
-                    <X size={24}/>
-                </button>
+                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"><X size={24}/></button>
                 <div className="flex items-center gap-2 mb-2">
                      <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Footprints size={20}/></div>
                      <span className="text-xs font-bold uppercase text-indigo-500 tracking-wider">Course à Pied</span>
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 leading-tight">
-                    {exercise.name}
-                </h3>
-                <div className="flex items-center gap-2 mt-2 text-sm text-slate-500 font-medium">
-                    <Clock size={16}/> {exercise.sets} • {exercise.reps}
-                </div>
+                <h3 className="text-2xl font-black text-slate-800 leading-tight">{exercise.name}</h3>
+                <div className="flex items-center gap-2 mt-2 text-sm text-slate-500 font-medium"><Clock size={16}/> {exercise.sets} • {exercise.reps}</div>
             </div>
         ) : (
-            // HEADER MUSCU (AVEC IMAGE)
             <div className="h-56 bg-slate-100 relative overflow-hidden bg-white shrink-0 group">
-                <img 
-                    src={imageSrc}
-                    alt={exercise.name}
-                    className={`w-full h-full ${objectFitClass}`}
-                    onError={() => setImgError(true)}
-                />
-                
-                <button 
-                    onClick={onClose} 
-                    className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"
-                >
-                    <X size={20}/>
-                </button>
-
+                <img src={imageSrc} alt={exercise.name} className={`w-full h-full ${objectFitClass}`} onError={() => setImgError(true)}/>
+                <button onClick={onClose} className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition backdrop-blur-md z-50 border border-white/20 shadow-lg"><X size={20}/></button>
                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
-                    <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                        {exercise.name}
-                    </h3>
+                    <h3 className="text-2xl font-black text-white/80 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{exercise.name}</h3>
                     <span className="text-white/60 text-xs font-bold uppercase tracking-wider mt-1 block drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                         {exercise.sets.toString().includes('bloc') || exercise.sets.toString().includes('temps') ? exercise.sets : `${exercise.sets} Séries`} x {exercise.reps}
                     </span>
@@ -465,95 +526,45 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
             </div>
         )}
 
-        {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto">
-            
-            {/* --- GESTION DES SÉRIES & TIMER (SEULEMENT SI PAS RUN) --- */}
             {!isRun && (
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                 <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                        <Activity size={16} className="text-indigo-500"/> Suivi de séance
-                    </h4>
+                    <h4 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className="text-indigo-500"/> Suivi de séance</h4>
                     {isTimerRunning && (
                         <div className="flex items-center gap-2 animate-in slide-in-from-top-2">
-                            <button onClick={() => setTimer(t => Math.max(0, t - 10))} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Minus size={14}/></button>
-                            <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-md shadow-indigo-200">
-                                <Timer size={14}/> {formatTime(timer)}
-                            </div>
-                            <button onClick={() => setTimer(t => t + 10)} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Plus size={14}/></button>
-                            {/* Bouton pour sauter le repos - Nouveau ! */}
+                            <button onClick={() => setTimer(t => Math.max(0, t - 5))} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Minus size={14}/></button>
+                            <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-md shadow-indigo-200"><Timer size={14}/> {formatTime(timer)}</div>
+                            <button onClick={() => setTimer(t => t + 5)} className="bg-indigo-100 text-indigo-700 p-1 rounded-full hover:bg-indigo-200 transition"><Plus size={14}/></button>
                             <button onClick={handleSkip} className="bg-rose-100 text-rose-700 p-1 rounded-full hover:bg-rose-200 transition ml-1" title="Passer le repos"><SkipForward size={14}/></button>
                         </div>
                     )}
                 </div>
-
                 <div className="space-y-3">
                     {setsStatus.map((isDone, idx) => (
                         <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
-                                    {idx + 1}
-                                </span>
-                                <span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>
-                                    {exercise.reps} reps
-                                </span>
-                            </div>
-                            
-                            <button 
-                                onClick={() => toggleSet(idx)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}
-                            >
-                                {isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}
-                            </button>
+                            <div className="flex items-center gap-3"><span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span><span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span></div>
+                            <button onClick={() => toggleSet(idx)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}>{isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}</button>
                         </div>
                     ))}
                 </div>
             </div>
             )}
 
-            {/* Protocole (Infos statiques) */}
             <div className="flex gap-4">
-                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
-                    <div className="text-xs text-slate-400 font-bold uppercase">Repos</div>
-                    <div className="text-lg font-black text-slate-700">{exercise.rest}</div>
-                </div>
-                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center shadow-sm">
-                    <div className="text-xs text-rose-400 font-bold uppercase">Intensité</div>
-                    <div className="text-lg font-black text-rose-600">RPE {exercise.rpe}</div>
-                </div>
+                <div className="flex-1 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm"><div className="text-xs text-slate-400 font-bold uppercase">Repos</div><div className="text-lg font-black text-slate-700">{exercise.rest}</div></div>
+                <div className="flex-1 bg-rose-50 p-3 rounded-2xl border border-rose-100 text-center shadow-sm"><div className="text-xs text-rose-400 font-bold uppercase">Intensité</div><div className="text-lg font-black text-rose-600">RPE {exercise.rpe}</div></div>
             </div>
-
-            {/* Consigne Coach */}
             <div>
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Brain size={18}/></div>
-                    <h4 className="font-bold text-slate-800">Consigne Technique</h4>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    {exercise.instructions}
-                </p>
+                <div className="flex items-center gap-2 mb-2"><div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Brain size={18}/></div><h4 className="font-bold text-slate-800">Consigne Technique</h4></div>
+                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{exercise.instructions}</p>
             </div>
-
-            {/* Focus Science */}
             <div>
-                 <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-emerald-100 p-1.5 rounded-lg text-emerald-600"><Target size={18}/></div>
-                    <h4 className="font-bold text-slate-800">Objectif Physiologique</h4>
-                </div>
-                <p className="text-xs font-medium text-slate-500">
-                    {exercise.note}
-                </p>
+                 <div className="flex items-center gap-2 mb-2"><div className="bg-emerald-100 p-1.5 rounded-lg text-emerald-600"><Target size={18}/></div><h4 className="font-bold text-slate-800">Objectif Physiologique</h4></div>
+                <p className="text-xs font-medium text-slate-500">{exercise.note}</p>
             </div>
-
-            {/* Bouton de validation : Toujours visible pour Run, Seulement si tout coché pour Muscu */}
             {(isRun || allSetsDone) && (
-                <button 
-                    onClick={handleComplete} 
-                    className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 mt-2 animate-in slide-in-from-bottom-2 fade-in"
-                >
-                    {isRun ? "Terminer la séance" : "Valider l'exercice"}
-                </button>
+                <button onClick={handleComplete} className="w-full py-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 mt-2 animate-in slide-in-from-bottom-2 fade-in">{isRun ? "Terminer la séance" : "Valider l'exercice"}</button>
             )}
         </div>
       </div>
@@ -561,10 +572,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
   );
 };
 
-// ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge remain unchanged)
-// Je conserve les composants existants, pas de changement nécessaire ici pour cette demande spécifique.
-// Pour la lisibilité et éviter les erreurs de référence, je les inclus :
-
+// ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge)
 const InteractiveInterference = () => {
     const [scenario, setScenario] = useState('far'); 
     return (
@@ -795,7 +803,22 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => loadState('activeTab', 'plan'));
   const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-  const defaultUserData = { name: "Charles", weight: 75, goalTime: 50, runDaysPerWeek: 3, strengthDaysPerWeek: 3, strengthFocus: 'hypertrophy', durationWeeks: 10, progressionStart: 15, difficultyFactor: 1.0 };
+  // Valeurs par défaut avec support Hyrox
+  const defaultUserData = { 
+      name: "User", 
+      weight: 75, 
+      goalTime: 50, 
+      targetDistance: '10k',
+      runDaysPerWeek: 3, 
+      strengthDaysPerWeek: 2, 
+      hyroxSessionsPerWeek: 3, // Défaut pour Hyrox
+      extraRunSessions: 0,
+      extraStrengthSessions: 0,
+      strengthFocus: 'hypertrophy', 
+      durationWeeks: 10, 
+      progressionStart: 15, 
+      difficultyFactor: 1.0 
+  };
 
   const [userData, setUserData] = useState(() => loadState('userData', defaultUserData));
   const [plan, setPlan] = useState(() => loadState('plan', []));
@@ -812,9 +835,34 @@ export default function App() {
   const [filteredSessionIds, setFilteredSessionIds] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [expandedSession, setExpandedSession] = useState(null);
-
-  // Fonction pour déplacer un jour dans le planning avec un bouton "Cliquer pour déplacer"
   const [swapSelection, setSwapSelection] = useState(null);
+
+  // --- HANDLERS DÉFINIS DANS APP ---
+
+  const handleDistanceSelect = (dist) => {
+      let defaultTime = 50;
+      let defaultDuration = 10;
+
+      if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } 
+      if (dist === '10k') { defaultTime = 50; defaultDuration = 10; }
+      if (dist === '21k') { defaultTime = 100; defaultDuration = 12; } 
+      if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } 
+      if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } 
+
+      setUserData({
+          ...userData, 
+          targetDistance: dist, 
+          goalTime: defaultTime,
+          durationWeeks: defaultDuration
+      });
+  };
+
+  const handleTimeChange = (delta) => {
+      const isShort = ['5k', '10k', 'hyrox'].includes(userData.targetDistance); // Hyrox traité comme court pour la précision
+      const step = isShort ? 0.5 : 1; 
+      const newTime = Math.max(15, userData.goalTime + (delta * step));
+      setUserData({...userData, goalTime: newTime});
+  };
 
   const handleSwapRequest = (weekIdx, dayIdx) => {
       if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) {
@@ -854,25 +902,19 @@ export default function App() {
   };
 
   const resetWeekOrder = (weekNumber) => {
-    // Suppression du confirm() bloquant
     const newPlan = plan.map((week) => {
       if (week.weekNumber !== weekNumber) return week; 
-      
       const originalSessions = week.sessions;
-      const defaultSchedule = getRecommendedSchedule(originalSessions);
-      
+      const defaultSchedule = getRecommendedSchedule(originalSessions, userData.targetDistance === 'hyrox');
       return {
         ...week,
         schedule: defaultSchedule
       };
     });
-    
     setPlan(newPlan);
   };
 
-  // NOUVEAU : Reset de la progression de la semaine
   const resetWeekProgress = (week) => {
-      // Suppression du confirm() bloquant
       const newCompletedSessions = new Set(completedSessions);
       const newCompletedExercises = new Set(completedExercises);
 
@@ -889,7 +931,6 @@ export default function App() {
               });
           }
       });
-
       setCompletedSessions(newCompletedSessions);
       setCompletedExercises(newCompletedExercises);
   };
@@ -931,7 +972,6 @@ export default function App() {
     }
   };
 
-  // Fonction pour DEVALIDER une séance (Undo)
   const unvalidateSession = (id) => {
       const newSet = new Set(completedSessions);
       if (newSet.has(id)) {
@@ -940,7 +980,6 @@ export default function App() {
       }
   };
 
-  // Fonction pour cocher/décocher un exercice individuel (Autorise le décochage maintenant)
   const toggleExercise = (exerciseUniqueId) => {
       const newSet = new Set(completedExercises);
       if (newSet.has(exerciseUniqueId)) {
@@ -978,95 +1017,189 @@ export default function App() {
 
   const generatePlan = () => {
     const newPlan = [];
-    const { durationWeeks: totalWeeks } = userData;
+    const { durationWeeks: totalWeeks, targetDistance } = userData;
     const adaptationWeeks = Math.ceil(totalWeeks * 0.3);
     const taperWeeks = 2;
     let hypertrophySessionIndex = 0;
-    let streetSessionIndex = 0; // Ajout de l'index pour Street Workout
+    let streetSessionIndex = 0; 
+    let hyroxSessionIndex = 0; 
+
+    // --- PARAMÈTRES DE DISTANCE ---
+    let distanceKm = 10; // Default
+    if (targetDistance === '5k') distanceKm = 5;
+    if (targetDistance === '21k') distanceKm = 21.1;
+    if (targetDistance === '42k') distanceKm = 42.195;
+    if (targetDistance === 'hyrox') distanceKm = 8; 
 
     for (let i = 1; i <= totalWeeks; i++) {
       const isRaceWeek = i === totalWeeks;
       const isTaper = i > totalWeeks - taperWeeks;
       const isAdaptation = i <= adaptationWeeks;
-      const paces = getPaceForWeek(i, totalWeeks, userData.goalTime, userData.progressionStart, userData.difficultyFactor);
+      const paces = getPaceForWeek(i, totalWeeks, userData.goalTime, userData.progressionStart, userData.difficultyFactor, distanceKm);
+      
       let sessions = [];
       let focus = isRaceWeek ? "OBJECTIF" : isTaper ? "AFFÛTAGE" : isAdaptation ? "ADAPTATION" : "DÉVELOPPEMENT";
       let volumeLabel = isAdaptation ? "Volume bas" : isTaper ? "Récupération" : "Charge haute";
       const isTechWeek = i % 2 !== 0;
-      sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady });
 
-      if (userData.runDaysPerWeek >= 2) {
-        if (isAdaptation) {
-           const cycleType = i % 3;
-           if (cycleType === 1) { const distApprox = (15/paces.valEasy) + (15/paces.valInterval) + (15/paces.valEasy); sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "Fartlek 30/30", structure: 'interval', intensity: 'medium', duration: "45 min", durationMin: 45, distance: `~${distApprox.toFixed(1)} km`, paceTarget: paces.interval, paceGap: paces.gap, rpe: 7, description: `20' écho + 10 x 30" vite / 30" lent + 10' cool.`, scienceNote: `Sollicitation VO2max et dynamique.`, planningAdvice: "Séance clé. Arrivez frais.", exercises: RUN_PROTOCOLS.interval_short }); } 
-           else if (cycleType === 2) { sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "Renforcement Côtes", structure: 'hills', intensity: 'high', duration: "40 min", durationMin: 40, distance: "Varié", paceTarget: "Effort", paceGap: 0, rpe: 8, description: `20' écho + 8 x 45" montée dynamique (récup descente).`, scienceNote: `Puissance musculaire spécifique.`, planningAdvice: "Attention aux mollets le lendemain.", exercises: RUN_PROTOCOLS.hills }); } 
-           else { sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "Pyramide Fartlek", structure: 'pyramid', intensity: 'medium', duration: "45 min", durationMin: 45, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 7, description: `20' écho + 1'-2'-3'-2'-1' (récup moitié temps) + 10' cool.`, scienceNote: `Variation d'allure.`, planningAdvice: "Séance ludique.", exercises: RUN_PROTOCOLS.interval_short }); }
-        } else if (!isRaceWeek) {
-           const cycleType = i % 3;
-           if (cycleType === 1) { const distApprox = (20/paces.valEasy) + (24/paces.valThreshold) + (16/paces.valEasy); sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "Seuil Fractionné", structure: 'threshold', intensity: 'high', duration: "1h00", durationMin: 60, distance: `~${distApprox.toFixed(1)} km`, paceTarget: paces.threshold, paceGap: paces.gap, rpe: 8, description: `20' écho + 3 x 8min à ${paces.threshold}/km (r=2').`, scienceNote: `Cible : Seuil Anaérobie.`, planningAdvice: "Attention : Ne pas faire de jambes lourdes la veille.", exercises: RUN_PROTOCOLS.threshold }); } 
-           else if (cycleType === 2) { sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "Tempo Continu", structure: 'steady', intensity: 'medium', duration: "50 min", durationMin: 50, distance: `~${(50/paces.valThreshold).toFixed(1)} km`, paceTarget: paces.threshold, paceGap: paces.gap, rpe: 7, description: `15' écho + 20min continu à ${paces.threshold}/km + 15' cool.`, scienceNote: `Tenue de l'allure au mental.`, planningAdvice: "Focus relâchement.", exercises: RUN_PROTOCOLS.threshold }); } 
-           else { sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: "VMA Longue", structure: 'interval', intensity: 'high', duration: "55 min", durationMin: 55, distance: `Varié`, paceTarget: paces.interval, paceGap: paces.gap, rpe: 9, description: `20' écho + 5 x 3min (r=2' trot).`, scienceNote: `Soutien de VO2max.`, planningAdvice: "Exigeant.", exercises: RUN_PROTOCOLS.interval_short }); }
+      // --- BRANCHE HYROX ---
+      if (targetDistance === 'hyrox') {
+          focus = isRaceWeek ? "HYROX RACE" : focus;
+
+          // 1. Génération des séances principales HYROX (selon le slider principal)
+          const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"];
+          const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim];
+          
+          for(let h=0; h < userData.hyroxSessionsPerWeek; h++) {
+             const currentSplitIndex = (hyroxSessionIndex + h) % 5;
+             sessions.push({ 
+                 id: `w${i}-h${h}`, 
+                 day: `HYROX ${h+1}`, 
+                 category: 'hyrox', 
+                 type: splitNames[currentSplitIndex], 
+                 structure: 'pyramid', 
+                 intensity: 'high', 
+                 duration: "60-90 min", 
+                 durationMin: 75, 
+                 paceTarget: "N/A", 
+                 paceGap: 0, 
+                 rpe: 9, 
+                 description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, 
+                 scienceNote: "Endurance de force.", 
+                 planningAdvice: "Simulez les conditions de course.", 
+                 exercises: splitExos[currentSplitIndex], 
+                 tags: ['legs'] 
+             });
+          }
+          hyroxSessionIndex += userData.hyroxSessionsPerWeek; // Incrémenter pour la semaine suivante
+
+          // 2. Ajout Bonus Run
+          for(let r=0; r < userData.extraRunSessions; r++) {
+               sessions.push({ 
+                   id: `w${i}-bonus-r${r}`, 
+                   day: `BONUS RUN ${r+1}`, 
+                   category: 'run', 
+                   type: "Endurance Fondamentale", 
+                   structure: 'steady', 
+                   intensity: 'low', 
+                   duration: "45 min", 
+                   durationMin: 45, 
+                   distance: calcDist(45, paces.valEasy), 
+                   paceTarget: paces.easyRange, 
+                   paceGap: paces.gap, 
+                   rpe: 3, 
+                   description: "Footing souple pour augmenter le volume aérobie.", 
+                   scienceNote: "Capillarisation.", 
+                   planningAdvice: "À placer un jour de repos ou en bi-quotidien.", 
+                   exercises: RUN_PROTOCOLS.steady 
+               });
+          }
+
+          // 3. Ajout Bonus Muscu (Force Pure)
+          for(let s=0; s < userData.extraStrengthSessions; s++) {
+               sessions.push({ 
+                   id: `w${i}-bonus-s${s}`, 
+                   day: `BONUS MUSCU ${s+1}`, 
+                   category: 'strength', 
+                   type: "Force Max", 
+                   structure: 'pyramid', 
+                   intensity: 'high', 
+                   duration: "60 min", 
+                   durationMin: 60, 
+                   paceTarget: "N/A", 
+                   paceGap: 0, 
+                   rpe: 8, 
+                   description: "Renforcement pur pour soutenir la charge Hyrox.", 
+                   scienceNote: "Recrutement unités motrices.", 
+                   planningAdvice: "Loin des séances intenses.", 
+                   exercises: STRENGTH_PROTOCOLS.force.full 
+               });
+          }
+
+      } else {
+        // --- BRANCHE RUNNING CLASSIQUE (5k, 10k, 21k, 42k) ---
+        
+        // Run 1: Endurance
+        sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady });
+
+        // Run 2: Qualité
+        if (userData.runDaysPerWeek >= 2) {
+            let sessionType = "";
+            let sessionExo = [];
+            
+            if (targetDistance === '5k') {
+                 sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short;
+            } else if (targetDistance === '10k') {
+                 const cycle = i % 4;
+                 if (cycle === 1) { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; }
+                 else if (cycle === 2) { sessionType = "Seuil Anaérobie"; sessionExo = RUN_PROTOCOLS.threshold; }
+                 else if (cycle === 3) { sessionType = "Côtes / Force"; sessionExo = RUN_PROTOCOLS.hills; }
+                 else { sessionType = "VMA Longue"; sessionExo = RUN_PROTOCOLS.interval_long; }
+            } else if (targetDistance === '21k') {
+                 sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold;
+            } else { 
+                 sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; 
+                 sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; 
+            }
+            
+            sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: sessionType, structure: 'interval', intensity: 'high', duration: "60 min", durationMin: 60, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: `Séance clé pour ${targetDistance}.`, scienceNote: "Développement moteur.", planningAdvice: "Fraîcheur requise.", exercises: sessionExo });
+        }
+
+        // Run 3: Sortie Longue
+        if (userData.runDaysPerWeek >= 3) {
+            let longRunDuration = 60;
+            let longRunType = "Sortie Longue";
+            
+            if (targetDistance === '21k') {
+                longRunDuration = 80 + (i * 5); 
+                if (longRunDuration > 130) longRunDuration = 90;
+            }
+            if (targetDistance === '42k') {
+                if (i % 3 === 0) { 
+                    longRunDuration = 90; 
+                    longRunType = "Sortie Longue (Récup)";
+                } else {
+                    longRunDuration = 100 + (i * 10); 
+                    if (longRunDuration > 180) longRunDuration = 150;
+                }
+            }
+            if (isTaper) longRunDuration = longRunDuration * 0.6;
+
+            sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run });
+        }
+        
+        // --- RENFORCEMENT ---
+        const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek;
+        
+        for(let s=1; s<=strengthCount; s++) {
+            let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = [];
+            
+            if (userData.strengthFocus === 'force') {
+                if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; } }
+                else { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; } }
+            
+            } else if (userData.strengthFocus === 'street_workout') {
+                const splitNames = ["Street Push", "Street Pull", "Street Legs", "Street Skills", "Street Full Body"];
+                const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body];
+                const currentSplitIndex = streetSessionIndex % 5;
+                gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex];
+                if (currentSplitIndex === 2) gymTags = ['legs'];
+                streetSessionIndex++;
+
+            } else {
+                const splitNames = ["Push", "Pull", "Legs", "Upper", "Full"];
+                const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back];
+                const currentSplitIndex = hypertrophySessionIndex % 5;
+                gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex];
+                if (currentSplitIndex === 2) gymTags = ['legs'];
+                hypertrophySessionIndex++;
+            }
+
+            sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags });
         }
       }
 
-      if (userData.runDaysPerWeek >= 3 && !isRaceWeek) {
-         const longDur = isAdaptation ? 50 + (i * 5) : isTaper ? 50 : 75 + (i%2)*10; const isFastFinish = i % 3 === 0 && !isAdaptation;
-         sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: isFastFinish ? "Sortie Longue + Final" : "Sortie Longue", structure: 'steady', intensity: isFastFinish ? 'medium' : 'low', duration: `${longDur} min`, durationMin: longDur, distance: calcDist(longDur, paces.valEasy), paceTarget: isFastFinish ? "Endurance -> Seuil" : paces.easyRange, paceGap: paces.gap, rpe: 4, description: isFastFinish ? `Les ${Math.min(15, longDur-30)} dernières minutes à allure 10km. Le reste cool.` : `Endurance durée. Restez dans la zone de confort.`, scienceNote: isFastFinish ? "Pré-fatigue." : "Résistance à la fatigue centrale.", planningAdvice: "Weekend. Mangez des glucides avant.", exercises: RUN_PROTOCOLS.long_run });
-      }
-
-      if (userData.runDaysPerWeek >= 4 && !isRaceWeek) {
-         sessions.push({ id: `w${i}-r4`, day: "RUN 4", category: 'run', type: "Footing Récupération", structure: 'steady', intensity: 'low', duration: "40 min", durationMin: 40, distance: calcDist(40, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 2, description: "Footing très souple pour assimiler. Option vélo possible.", scienceNote: "Récupération active.", planningAdvice: "Le lendemain de la séance dure.", exercises: RUN_PROTOCOLS.recovery });
-      }
-
-      if (isRaceWeek) {
-        sessions = [
-            { id: `w${i}-r1`, day: "J-3", category: 'run', type: "Réveil Neuromusculaire", structure: 'interval', intensity: 'low', duration: "20 min", durationMin: 20, distance: calcDist(20, paces.valEasy), paceTarget: paces.easy, paceGap: 0, rpe: 3, description: "Tonus léger.", scienceNote: "Potentiation post-activation (PAP).", exercises: RUN_PROTOCOLS.steady },
-            { id: `w${i}-race`, day: "JOUR J", category: 'run', type: "COMPÉTITION", structure: 'steady', intensity: 'high', duration: "10 KM", durationMin: userData.goalTime, distance: "10.0 km", paceTarget: paces.race, paceGap: 0, rpe: 10, description: `Objectif ${paces.race}/km.`, scienceNote: "Gestion de l'effort.", exercises: [] }
-        ];
-      }
-
-      const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek;
-      
-      for(let s=1; s<=strengthCount; s++) {
-        let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = [];
-        
-        if (userData.strengthFocus === 'force') {
-            // --- FORCE ---
-            if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } }
-            else if (strengthCount >= 3) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else if(s===2) { gymType = "Haut (Force)"; exercises = STRENGTH_PROTOCOLS.force.upper; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; gymTags=['legs']; } }
-        
-        } else if (userData.strengthFocus === 'street_workout') {
-            // --- STREET WORKOUT (NOUVEAU) ---
-            const splitNames = ["Street Push (Poussée)", "Street Pull (Tirage)", "Street Legs (Jambes)", "Street Skills (Gainage/Tech)", "Street Full Body"];
-            const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body];
-            
-            const currentSplitIndex = streetSessionIndex % 5;
-            gymType = splitNames[currentSplitIndex];
-            exercises = splitExos[currentSplitIndex];
-            
-            if (currentSplitIndex === 2) gymTags = ['legs']; // C'est la séance jambes
-            if (gymTags.includes('legs')) gymAdvice = "⚠️ Jambes : Attention à la récup pour le run.";
-            
-            streetSessionIndex++;
-
-        } else {
-            // --- HYPERTROPHIE (DEFAULT) ---
-            const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps)", "Legs (Jambes)", "Accessory (Bras/Épaules)", "Arnold (Pecs/Dos)"];
-            const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back];
-            
-            const currentSplitIndex = hypertrophySessionIndex % 5;
-            gymType = splitNames[currentSplitIndex];
-            exercises = splitExos[currentSplitIndex];
-            
-            if (currentSplitIndex === 2) gymTags = ['legs']; 
-            if (gymTags.includes('legs')) gymAdvice = "⚠️ Attention : Grosse fatigue nerveuse.";
-            hypertrophySessionIndex++;
-        }
-
-        sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "1h15", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement spécifique.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags });
-      }
-
-      const weeklySchedule = getRecommendedSchedule(sessions);
+      const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox');
       newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule });
     }
     setPlan(newPlan);
@@ -1074,7 +1207,6 @@ export default function App() {
   };
 
   const resetPlan = () => {
-    // Suppression du confirm() bloquant
     localStorage.removeItem('clab_storage'); 
     setCompletedSessions(new Set());
     setCompletedExercises(new Set());
@@ -1089,7 +1221,6 @@ export default function App() {
        
       {step === 'input' && (
         <div className="bg-slate-900 relative overflow-hidden text-white pt-12 pb-24 rounded-b-[3rem] shadow-2xl">
-            {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
             <div className="absolute -top-20 -right-20 bg-indigo-600 rounded-full w-64 h-64 blur-3xl opacity-30"></div>
             <div className="absolute top-20 -left-20 bg-rose-600 rounded-full w-64 h-64 blur-3xl opacity-20"></div>
@@ -1102,14 +1233,9 @@ export default function App() {
                     C-Lab <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-rose-400">Performance</span>
                 </h1>
                 <p className="text-slate-300 text-lg md:text-xl max-w-xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-6 duration-1000">
-                    La science de l'entraînement au service de votre 10km. <br/>
-                    <span className="text-sm opacity-75">Optimisation de l'interférence Run/Muscu • Planification Polarisée</span>
+                    La science de l'entraînement au service de votre objectif. <br/>
+                    <span className="text-sm opacity-75">Optimisation de l'interférence • Planification Polarisée</span>
                 </p>
-                <div className="flex justify-center gap-8 mt-8 text-xs font-bold text-slate-400 uppercase tracking-widest animate-in fade-in duration-1000 delay-300">
-                    <div className="flex items-center gap-2"><ShieldCheck size={16}/> Scientifique</div>
-                    <div className="flex items-center gap-2"><Layers size={16}/> Hybride</div>
-                    <div className="flex items-center gap-2"><FlaskConical size={16}/> C-Lab</div>
-                </div>
             </div>
         </div>
       )}
@@ -1125,95 +1251,70 @@ export default function App() {
                     <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
                     <FlaskConical size={12}/> C-Lab Performance
                     </div>
-                    <h1 className="text-xl md:text-2xl font-black">Plan Hybride</h1>
+                    <h1 className="text-xl md:text-2xl font-black">Plan {userData.targetDistance === 'hyrox' ? 'HYROX' : 'Running'}</h1>
                 </div>
             </div>
-            
-            {/* AJOUT : Bouton Don dans le Header */}
-            <div className="flex items-center gap-2 ml-auto">
-              {DONATION_URL && (
-                  <a 
-                    href={DONATION_URL} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-xl text-sm font-black shadow-md transition-all active:scale-95 animate-pulse"
-                  >
-                      <Coffee size={18}/> <span>Soutenir</span>
-                  </a>
-              )}
-               <button onClick={() => setShowInstallGuide(true)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white transition" title="Installer l'app">
-                    <Smartphone size={18} />
-                </button>
-
-                <button onClick={() => generateICS(plan)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg text-white transition" title="Ajouter au calendrier">
-                    <CalendarIcon size={18} />
-                </button>
-            </div>
-            
-             {/* Navigation Mobile Fixe en bas - Adaptation Header */}
              <div className="flex w-full sm:w-auto bg-slate-800 rounded-lg p-1">
                     <button onClick={() => setActiveTab('plan')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Programme</button>
                     <button onClick={() => setActiveTab('stats')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'stats' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Science</button>
               </div>
-
             </div>
         </div>
       )}
 
       <main className="max-w-3xl mx-auto px-4 mt-6 flex-1 w-full relative z-20 pb-20">
         
-        {/* MODAL EXERCICE */}
         {modalExercise && (
             <ExerciseModal 
                 exercise={modalExercise.data} 
-                exerciseId={modalExercise.id} // ID de session parent pour validation
-                category={modalExercise.category} // NEW: Pass category
-                exerciseIndex={modalExercise.index} // Pass the index
+                exerciseId={modalExercise.id} 
+                category={modalExercise.category} 
+                exerciseIndex={modalExercise.index} 
                 onClose={() => setModalExercise(null)} 
                 onComplete={(uniqueId, isExercise) => handleSessionCompleteFromModal(uniqueId, isExercise)}
             />
         )}
 
-        {/* GUIDE INSTALLATION */}
-        {showInstallGuide && (
-            <InstallGuide onClose={() => setShowInstallGuide(false)} />
-        )}
-        
-        {/* BOUTON FLOTTANT DONATION (MOBILE) */}
-        {step === 'result' && DONATION_URL && (
-             <a 
-                href={DONATION_URL} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="fixed bottom-6 right-6 z-40 bg-yellow-400 text-yellow-900 p-3 rounded-full shadow-xl hover:bg-yellow-300 transition-transform hover:scale-110 active:scale-95 flex items-center gap-2 font-bold text-xs animate-bounce sm:hidden"
-             >
-                <Coffee size={20}/>
-                <span>Soutenir</span>
-             </a>
-        )}
-
         {step === 'input' ? (
           <div className="-mt-16 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 duration-500">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4">
-                <Activity className="text-indigo-600"/> Configuration du Profil
+                <Award className="text-indigo-600"/> Objectif Principal
             </h2>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {['5k', '10k', '21k', '42k', 'hyrox'].map((type) => (
+                    <button 
+                        key={type}
+                        onClick={() => handleDistanceSelect(type)}
+                        className={`py-3 px-2 rounded-xl text-sm font-black transition-all ${userData.targetDistance === type 
+                            ? type === 'hyrox' ? 'bg-yellow-400 text-yellow-900 shadow-lg scale-105 ring-2 ring-yellow-200' : 'bg-indigo-600 text-white shadow-lg scale-105 ring-2 ring-indigo-200' 
+                            : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+                    >
+                        {type === 'hyrox' ? 'HYROX' : type.toUpperCase()}
+                    </button>
+                ))}
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* MODIFICATION : INPUT -> SELECT POUR L'OBJECTIF */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
               <div className="space-y-4">
-                <label className="text-xs font-bold text-slate-400 uppercase">Objectif (min)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase">
+                    {userData.targetDistance === 'hyrox' ? "Temps Cible Hyrox" : `Chrono ${userData.targetDistance.toUpperCase()}`}
+                </label>
                 <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition">
-                    <button onClick={() => setUserData({...userData, goalTime: Math.max(25, userData.goalTime - 1)})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
+                    <button onClick={() => handleTimeChange(-1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
                     <div className="flex-1 text-center relative">
-                        <input type="number" value={userData.goalTime} onChange={(e) => setUserData({...userData, goalTime: Number(e.target.value)})} className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 outline-none p-2"/>
+                        <div className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 p-2">
+                            {formatGoalTime(userData.goalTime)}
+                        </div>
                         <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
                     </div>
-                    <button onClick={() => setUserData({...userData, goalTime: userData.goalTime + 1})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
+                    <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
                 </div>
-                <p className="text-xs text-slate-400 text-center mt-2">Allure cible : {formatPace(userData.goalTime/10)}/km</p>
+                {userData.targetDistance !== 'hyrox' && (
+                    <p className="text-xs text-slate-400 text-center mt-2">Allure cible : {formatPace(userData.goalTime / (userData.targetDistance === '21k' ? 21.1 : userData.targetDistance === '42k' ? 42.195 : parseInt(userData.targetDistance)))}/km</p>
+                )}
               </div>
 
-              {/* MODIFICATION : INPUT -> SELECT POUR LA DURÉE */}
               <div className="space-y-4">
                 <label className="text-xs font-bold text-slate-400 uppercase">Durée Prépa</label>
                 <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-slate-300 transition">
@@ -1228,26 +1329,55 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-               <label className="flex justify-between text-xs font-bold text-slate-500 uppercase mb-4"><span>Progressivité (Douceur de départ)</span><span className="text-emerald-600">+{userData.progressionStart}%</span></label>
-               <input type="range" min="0" max="30" step="5" value={userData.progressionStart} onChange={e => setUserData({...userData, progressionStart: Number(e.target.value)})} className="w-full h-2 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"/>
-               <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-medium"><span>0% (Brutal)</span><span>15% (Optimal)</span><span>30% (Retour blessure)</span></div>
-            </div>
+            {/* --- CONTENU DYNAMIQUE SELON LE MODE --- */}
+            {userData.targetDistance === 'hyrox' ? (
+                <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-200 space-y-6">
+                    <h3 className="font-bold text-yellow-800 flex items-center gap-2"><Medal size={18}/> Configuration Hyrox</h3>
+                    
+                    <div className="space-y-3">
+                         <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-2">Séances HYROX (Mixte)</label>
+                         <div className="flex gap-2">
+                             {[2,3,4,5].map(n => (
+                                 <button key={n} onClick={() => setUserData({...userData, hyroxSessionsPerWeek: n})} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${userData.hyroxSessionsPerWeek === n ? 'bg-yellow-500 text-white shadow-lg' : 'bg-white border border-yellow-200 text-yellow-700'}`}>{n}</button>
+                             ))}
+                         </div>
+                    </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-3">
-                 <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2"><Footprints size={14}/> Runs / Semaine</label>
-                 <div className="flex gap-2">{[2,3,4].map(n => (<button key={n} onClick={() => setUserData({...userData, runDaysPerWeek: n})} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${userData.runDaysPerWeek === n ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-indigo-300'}`}>{n}</button>))}</div>
-               </div>
-               <div className="space-y-3">
-                 <label className="text-xs font-bold text-rose-400 uppercase flex items-center gap-2"><Dumbbell size={14}/> Muscu / Semaine</label>
-                 <div className="flex gap-2 flex-wrap">{[0,1,2,3,4,5].map(n => (<button key={n} onClick={() => setUserData({...userData, strengthDaysPerWeek: n})} className={`flex-1 py-3 min-w-[30px] rounded-xl text-sm font-bold transition ${userData.strengthDaysPerWeek === n ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-rose-300'}`}>{n}</button>))}</div>
-               </div>
-            </div>
+                    <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                             <label className="text-xs font-bold text-indigo-800 uppercase">Run Pur (+)</label>
+                             <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-yellow-200">
+                                 <button onClick={() => setUserData({...userData, extraRunSessions: Math.max(0, userData.extraRunSessions - 1)})} className="p-2 bg-indigo-100 rounded-lg text-indigo-700"><Minus size={14}/></button>
+                                 <span className="flex-1 text-center font-bold text-indigo-900">{userData.extraRunSessions}</span>
+                                 <button onClick={() => setUserData({...userData, extraRunSessions: Math.min(3, userData.extraRunSessions + 1)})} className="p-2 bg-indigo-100 rounded-lg text-indigo-700"><Plus size={14}/></button>
+                             </div>
+                         </div>
+                         <div className="space-y-2">
+                             <label className="text-xs font-bold text-rose-800 uppercase">Renfo Pur (+)</label>
+                             <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-yellow-200">
+                                 <button onClick={() => setUserData({...userData, extraStrengthSessions: Math.max(0, userData.extraStrengthSessions - 1)})} className="p-2 bg-rose-100 rounded-lg text-rose-700"><Minus size={14}/></button>
+                                 <span className="flex-1 text-center font-bold text-rose-900">{userData.extraStrengthSessions}</span>
+                                 <button onClick={() => setUserData({...userData, extraStrengthSessions: Math.min(3, userData.extraStrengthSessions + 1)})} className="p-2 bg-rose-100 rounded-lg text-rose-700"><Plus size={14}/></button>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2"><Footprints size={14}/> Runs / Semaine</label>
+                        <div className="flex gap-2">{[2,3,4].map(n => (<button key={n} onClick={() => setUserData({...userData, runDaysPerWeek: n})} className={`flex-1 py-3 rounded-xl text-sm font-bold transition ${userData.runDaysPerWeek === n ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-indigo-300'}`}>{n}</button>))}</div>
+                    </div>
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-rose-400 uppercase flex items-center gap-2"><Dumbbell size={14}/> Muscu / Semaine</label>
+                        <div className="flex gap-2 flex-wrap">{[0,1,2,3,4,5].map(n => (<button key={n} onClick={() => setUserData({...userData, strengthDaysPerWeek: n})} className={`flex-1 py-3 min-w-[30px] rounded-xl text-sm font-bold transition ${userData.strengthDaysPerWeek === n ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-white border border-slate-200 text-slate-400 hover:border-rose-300'}`}>{n}</button>))}</div>
+                    </div>
+                </div>
+            )}
 
-            {userData.strengthDaysPerWeek > 0 && (
+            {userData.strengthDaysPerWeek > 0 && userData.targetDistance !== 'hyrox' && (
                 <div className="space-y-3">
-                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Target size={14}/> Objectif Musculation</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Target size={14}/> Objectif Renforcement</label>
                     <div className="flex gap-4 bg-slate-50 p-1 rounded-xl border border-slate-200">
                         <button onClick={() => setUserData({...userData, strengthFocus: 'force'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'force' ? 'bg-white shadow-md text-rose-600 border border-rose-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Force & Puissance</span><span className="text-[9px] font-normal opacity-70">5 reps • Repos long • Lourd</span></button>
                         <button onClick={() => setUserData({...userData, strengthFocus: 'hypertrophy'})} className={`flex-1 py-3 rounded-lg text-sm font-bold flex flex-col items-center gap-1 transition ${userData.strengthFocus === 'hypertrophy' ? 'bg-white shadow-md text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:bg-white/50'}`}><span>Hypertrophie & Volume</span><span className="text-[9px] font-normal opacity-70">12 reps • Repos court • Pump</span></button>
@@ -1258,71 +1388,35 @@ export default function App() {
 
             <button onClick={generatePlan} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-bold text-lg shadow-xl hover:bg-slate-800 transition transform active:scale-[0.98] flex items-center justify-center gap-3">
                 <Sparkles size={20} className="text-yellow-400"/>
-                Lancer C-Lab Performance
+                Générer mon Plan
             </button>
           </div>
         ) : activeTab === 'plan' ? (
           // --- ONGLET PROGRAMME ---
           <div className="space-y-4 animate-in slide-in-from-right-4">
             
-            {userData.difficultyFactor > 1 && (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
-                    <AlertTriangle className="text-amber-500 shrink-0" size={20}/>
-                    <div>
-                        <h4 className="font-bold text-amber-800 text-sm">Mode Adapté Activé</h4>
-                        <p className="text-xs text-amber-700 mt-1">Le plan a été ralenti de {Math.round((userData.difficultyFactor - 1)*100)}% suite à votre feedback. Les allures sont plus douces pour favoriser la récupération.</p>
-                    </div>
-                </div>
-            )}
-            
-            {feedbackMessage && (
-                <div className={`p-3 rounded-xl text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${feedbackMessage.type === 'warning' ? 'bg-amber-100 text-amber-800' : feedbackMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>
-                    {feedbackMessage.type === 'warning' ? <AlertTriangle size={16}/> : <CheckCircle size={16}/>}
-                    {feedbackMessage.text}
-                </div>
-            )}
-
             {activeTab === 'plan' && step === 'result' && (
              <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4 flex items-start gap-3 text-xs text-indigo-800 animate-in fade-in">
                 <Move size={16} className="shrink-0 mt-0.5"/>
                 <p>
                     <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours.
-                    <br/><span className="opacity-70 italic">Note: L'optimisation scientifique (Interférence) n'est plus garantie si vous déplacez les séances clés.</span>
                 </p>
              </div>
             )}
 
             {plan.map((week, weekIdx) => {
                 const isOpen = expandedWeek === week.weekNumber;
-                
-                // Filtre d'affichage pour le "Focus Jour"
-                const sessionsToShow = filteredSessionIds 
-                    ? week.sessions.filter(s => filteredSessionIds.includes(s.id))
-                    : week.sessions;
-
-                // Vérifier si TOUTES les séances de la semaine sont complétées
+                const sessionsToShow = filteredSessionIds ? week.sessions.filter(s => filteredSessionIds.includes(s.id)) : week.sessions;
                 const allSessionsCompleted = week.sessions.every(s => completedSessions.has(s.id));
-
-                // Indicateur visuel pour l'en-tête de semaine (Vert si fini)
-                const headerBgClass = allSessionsCompleted 
-                    ? 'bg-green-50 border-green-200' 
-                    : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
-                
-                const headerIconClass = allSessionsCompleted
-                    ? 'bg-green-600 text-white'
-                    : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
+                const headerBgClass = allSessionsCompleted ? 'bg-green-50 border-green-200' : isOpen ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-100';
+                const headerIconClass = allSessionsCompleted ? 'bg-green-600 text-white' : isOpen ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200';
 
                 return (
                   <div key={week.weekNumber} className={`rounded-xl shadow-sm border overflow-hidden transition-all ${allSessionsCompleted ? 'border-green-200' : 'border-slate-100 bg-white'} ${isOpen ? 'ring-2 ring-indigo-500' : ''}`}>
                     <button onClick={() => setExpandedWeek(isOpen ? null : week.weekNumber)} className={`w-full p-4 flex items-center justify-between ${headerBgClass}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>
-                            {allSessionsCompleted ? <Check size={18}/> : week.weekNumber}
-                        </div>
-                        <div className="text-left">
-                            <h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>
-                            {allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}
-                        </div>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${headerIconClass}`}>{allSessionsCompleted ? <Check size={18}/> : week.weekNumber}</div>
+                        <div className="text-left"><h3 className={`font-bold text-sm ${allSessionsCompleted ? 'text-green-800' : 'text-slate-700'}`}>{week.focus}</h3>{allSessionsCompleted && <span className="text-[10px] text-green-600 font-medium">Semaine validée</span>}</div>
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
@@ -1333,60 +1427,31 @@ export default function App() {
                         {week.schedule && week.schedule.length > 0 && (
                             <div className="mx-1 mb-4 border-2 border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
                                 <div className="bg-slate-100 px-4 py-2 flex items-center justify-between border-b border-slate-200">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-slate-500"/>
-                                        <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wide">Planning Semaine</h4>
-                                    </div>
+                                    <div className="flex items-center gap-2"><Calendar size={14} className="text-slate-500"/><h4 className="text-xs font-bold text-slate-600 uppercase tracking-wide">Planning Semaine</h4></div>
                                     <div className="flex items-center gap-3">
                                         {filteredSessionIds && (
-                                            <button onClick={() => setFilteredSessionIds(null)} className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:underline">
-                                                <RotateCcw size={10}/> Voir tout
-                                            </button>
+                                            <button onClick={() => setFilteredSessionIds(null)} className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 hover:underline"><RotateCcw size={10}/> Voir tout</button>
                                         )}
-                                        <button onClick={() => resetWeekOrder(week.weekNumber)} className="text-[10px] text-slate-400 hover:text-indigo-600 font-bold flex items-center gap-1 transition-colors" title="Réinitialiser l'ordre">
-                                            <RotateCcw size={10}/> Ordre
-                                        </button>
-                                        <button onClick={() => resetWeekProgress(week)} className="text-[10px] text-slate-400 hover:text-rose-600 font-bold flex items-center gap-1 transition-colors" title="Réinitialiser la progression">
-                                            <Trash2 size={10}/> Progrès
-                                        </button>
+                                        <button onClick={() => resetWeekOrder(week.weekNumber)} className="text-[10px] text-slate-400 hover:text-indigo-600 font-bold flex items-center gap-1 transition-colors" title="Réinitialiser l'ordre"><RotateCcw size={10}/> Ordre</button>
+                                        <button onClick={() => resetWeekProgress(week)} className="text-[10px] text-slate-400 hover:text-rose-600 font-bold flex items-center gap-1 transition-colors" title="Réinitialiser la progression"><Trash2 size={10}/> Zéro</button>
                                     </div>
                                 </div>
                                 <div className="p-3 grid grid-cols-1 gap-2 text-xs">
-                                    {/* CLIC & SWAP */}
                                     {week.schedule.map((day, i) => {
-                                        const isSelected = filteredSessionIds && 
-                                            day.sessionIds !== null && 
-                                            day.sessionIds.length === filteredSessionIds.length &&
-                                            day.sessionIds.every((val, index) => val === filteredSessionIds[index]);
-                                        
+                                        const isSelected = filteredSessionIds && day.sessionIds !== null && day.sessionIds.length === filteredSessionIds.length && day.sessionIds.every((val, index) => val === filteredSessionIds[index]);
                                         const hasActivity = day.sessionIds.length > 0;
                                         const isDayCompleted = hasActivity && day.sessionIds.every(id => completedSessions.has(id));
-
-                                        // Si ce jour est sélectionné pour l'échange
                                         const isSwapSource = swapSelection && swapSelection.weekIdx === week.weekNumber && swapSelection.dayIdx === i;
 
                                         return (
-                                            <div 
-                                                key={i} 
-                                                className={`flex items-center justify-between p-2 rounded border transition select-none ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'} ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''} ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                                            <div key={i} className={`flex items-center justify-between p-2 rounded border transition select-none ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'} ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''} ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                                                 onClick={() => {
                                                     if (swapSelection) { handleSwapRequest(week.weekNumber, i); }
                                                     else if (hasActivity) { const idsToFilter = day.sessionIds; handleDayClick(idsToFilter); }
                                                 }}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                     {/* Bouton Swap */}
-                                                     <button 
-                                                        onClick={(e) => { 
-                                                            e.stopPropagation(); 
-                                                            handleSwapRequest(week.weekNumber, i); 
-                                                        }}
-                                                        className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                                                        title="Déplacer ce jour"
-                                                     >
-                                                        <ArrowRightLeft size={12}/>
-                                                     </button>
-
+                                                     <button onClick={(e) => { e.stopPropagation(); handleSwapRequest(week.weekNumber, i); }} className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`} title="Déplacer ce jour"><ArrowRightLeft size={12}/></button>
                                                      <span className={`font-bold w-16 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{day.day}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1 overflow-hidden">
@@ -1472,18 +1537,6 @@ export default function App() {
                             <div className="p-8 text-center text-slate-400 text-xs italic animate-in fade-in">Aucune séance prévue ce jour-là. Repos ! 💤</div>
                         )}
                       </div>
-                    )}
-                    
-                    {/* FEEDBACK SEMAINE - SEULEMENT SI TOUT EST FINI */}
-                    {isOpen && allSessionsCompleted && (
-                        <div className="p-4 border-t border-green-100 bg-green-50 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
-                            <div className="flex items-center gap-2 text-green-800 text-sm font-bold"><Award size={18}/> Semaine Terminée ! Bilan ?</div>
-                            <div className="flex gap-2">
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'easier')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><ThumbsDown size={14}/> Trop dur</button>
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'keep')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 border border-green-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-green-700 transition"><CheckCircle size={14}/> Parfait</button>
-                                <button onClick={() => adaptDifficulty(week.weekNumber, 'harder')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><Zap size={14}/> Trop facile</button>
-                            </div>
-                        </div>
                     )}
                   </div>
                 );
