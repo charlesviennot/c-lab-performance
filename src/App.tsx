@@ -325,7 +325,7 @@ const STRENGTH_PROTOCOLS = {
       { name: "Développé Militaire", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Base Épaules", imageKeyword: "military press", instructions: "Barre ou haltères. Dos droit, abdos serrés. Poussez la charge au-dessus de la tête sans cambrer.", imageUrl: "" },
       { name: "Élévations Latérales Haltères", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Deltoïde Latéral", imageKeyword: "lateral raise", instructions: "Coude légèrement fléchi. Montez les coudes, pas les mains. Contrôlez la descente.", imageUrl: "" },
       { name: "Curl Biceps Incliné", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Biceps Chef Long", imageKeyword: "incline curl", instructions: "Banc à 45°. Laissez les bras pendre derrière le corps pour étirer le biceps. Gardez les coudes fixes.", imageUrl: "" },
-      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Triceps", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "" },
+      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Chef Latéral Triceps", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "" },
       { name: "Curl Marteau", sets: 3, reps: "12", rest: "60s", rpe: 8, note: "Brachial", imageKeyword: "hammer curl", instructions: "Prise marteau (neutre). Cible l'épaisseur du bras et l'avant-bras.", imageUrl: "https://i.postimg.cc/QdtvJg6n/Hammer_curl.png" }
     ],
     chest_back: [
@@ -338,7 +338,7 @@ const STRENGTH_PROTOCOLS = {
   },
   street_workout: {
     push: [
-        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ. Descendez à 90°.", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
+        { name: "Dips", sets: 4, reps: "8-12", rest: "2 min", rpe: 8, note: "Pecs/Triceps/Épaules", imageKeyword: "dips calisthenics", instructions: "Mouvement roi de la poussée. Bras tendus au départ. Descendez à 90°.", imageUrl: "https://i.postimg.cc/cCGBrWjx/dips.png" },
         { name: "Pike Push-ups", sets: 4, reps: "8-10", rest: "90s", rpe: 8, note: "Épaules", imageKeyword: "pike pushup", instructions: "Corps en V inversé.", imageUrl: "https://i.postimg.cc/nzSktsnG/Pike-Push-ups.png" },
         { name: "Pseudo Planche Push-ups", sets: 3, reps: "8-12", rest: "90s", rpe: 9, note: "Avant d'épaule", imageKeyword: "planche lean", instructions: "Mains tournées vers l'extérieur. Penchez-vous en avant.", imageUrl: "https://i.postimg.cc/2y2fY7V0/Pseudo_Planche_Push_ups.png" },
         { name: "Pompes Diamant", sets: 3, reps: "Max", rest: "60s", rpe: 9, note: "Triceps", imageKeyword: "diamond pushups", instructions: "Mains jointes sous la poitrine.", imageUrl: "https://i.postimg.cc/P5ZTpZcL/pompe_diamant.png" }
@@ -426,6 +426,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     }
   }, [exercise, isRun]);
 
+  // Logique du Timer
   useEffect(() => {
     let interval = null;
     if (isTimerRunning && timer > 0) {
@@ -443,6 +444,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     return () => clearInterval(interval);
   }, [isTimerRunning, timer]);
 
+  // Nouveau : Fonction Skip (Passer le repos sans son)
   const handleSkip = () => {
     setIsTimerRunning(false);
     setTimer(0);
@@ -573,6 +575,8 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
 };
 
 // ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge)
+// (Note: ces composants sont définis ici pour la complétude du fichier final, je les inclus pour éviter les erreurs de référence)
+
 const InteractiveInterference = () => {
     const [scenario, setScenario] = useState('far'); 
     return (
@@ -771,12 +775,35 @@ const RpeBadge = ({ level }) => {
 
 // --- MAIN APP ---
 export default function App() {
+  // Déplacement des objets de configuration dans le composant pour éviter les pbs de scope
+  const defaultUserData = { 
+      name: "User", 
+      weight: 75, 
+      goalTime: 50, 
+      targetDistance: '10k',
+      runDaysPerWeek: 3, 
+      strengthDaysPerWeek: 2, 
+      hyroxSessionsPerWeek: 3, 
+      extraRunSessions: 0,
+      extraStrengthSessions: 0,
+      strengthFocus: 'hypertrophy', 
+      durationWeeks: 10, 
+      progressionStart: 15, 
+      difficultyFactor: 1.0 
+  };
+
   const loadState = (key, defaultValue) => {
     if (typeof window === 'undefined') return defaultValue;
     try {
         const saved = localStorage.getItem('clab_storage');
         if (saved) {
             const parsed = JSON.parse(saved);
+            
+            // Fix crucial pour la rétrocompatibilité des sauvegardes
+            if (key === 'userData') {
+                return { ...defaultValue, ...(parsed[key] || {}) };
+            }
+
             if (key === 'completedSessions') return new Set(parsed.completedSessions || []);
             if (key === 'completedExercises') return new Set(parsed.completedExercises || []); 
             return parsed[key] !== undefined ? parsed[key] : defaultValue;
@@ -802,23 +829,6 @@ export default function App() {
   const [step, setStep] = useState(() => loadState('step', 'input'));
   const [activeTab, setActiveTab] = useState(() => loadState('activeTab', 'plan'));
   const [showInstallGuide, setShowInstallGuide] = useState(false);
-
-  // Valeurs par défaut avec support Hyrox
-  const defaultUserData = { 
-      name: "User", 
-      weight: 75, 
-      goalTime: 50, 
-      targetDistance: '10k',
-      runDaysPerWeek: 3, 
-      strengthDaysPerWeek: 2, 
-      hyroxSessionsPerWeek: 3, // Défaut pour Hyrox
-      extraRunSessions: 0,
-      extraStrengthSessions: 0,
-      strengthFocus: 'hypertrophy', 
-      durationWeeks: 10, 
-      progressionStart: 15, 
-      difficultyFactor: 1.0 
-  };
 
   const [userData, setUserData] = useState(() => loadState('userData', defaultUserData));
   const [plan, setPlan] = useState(() => loadState('plan', []));
@@ -858,7 +868,7 @@ export default function App() {
   };
 
   const handleTimeChange = (delta) => {
-      const isShort = ['5k', '10k', 'hyrox'].includes(userData.targetDistance); // Hyrox traité comme court pour la précision
+      const isShort = ['5k', '10k', 'hyrox'].includes(userData.targetDistance); 
       const step = isShort ? 0.5 : 1; 
       const newTime = Math.max(15, userData.goalTime + (delta * step));
       setUserData({...userData, goalTime: newTime});
@@ -902,6 +912,7 @@ export default function App() {
   };
 
   const resetWeekOrder = (weekNumber) => {
+    // Suppression du confirm() bloquant pour compatibilité iframe
     const newPlan = plan.map((week) => {
       if (week.weekNumber !== weekNumber) return week; 
       const originalSessions = week.sessions;
@@ -1029,7 +1040,7 @@ export default function App() {
     if (targetDistance === '5k') distanceKm = 5;
     if (targetDistance === '21k') distanceKm = 21.1;
     if (targetDistance === '42k') distanceKm = 42.195;
-    if (targetDistance === 'hyrox') distanceKm = 8; 
+    if (targetDistance === 'hyrox') distanceKm = 8; // Hyrox = 8x1km run
 
     for (let i = 1; i <= totalWeeks; i++) {
       const isRaceWeek = i === totalWeeks;
@@ -1044,9 +1055,13 @@ export default function App() {
 
       // --- BRANCHE HYROX ---
       if (targetDistance === 'hyrox') {
+          // Logique Hyrox spécifique
           focus = isRaceWeek ? "HYROX RACE" : focus;
 
-          // 1. Génération des séances principales HYROX (selon le slider principal)
+          // 1. Run "Moteur"
+          sessions.push({ id: `w${i}-h1`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short });
+
+          // 2. Séance Hyrox Spécifique (Sleds / Wall Balls...)
           const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"];
           const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim];
           
@@ -1122,7 +1137,7 @@ export default function App() {
         // Run 1: Endurance
         sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady });
 
-        // Run 2: Qualité
+        // Run 2: Qualité (adapté à la distance)
         if (userData.runDaysPerWeek >= 2) {
             let sessionType = "";
             let sessionExo = [];
@@ -1130,6 +1145,7 @@ export default function App() {
             if (targetDistance === '5k') {
                  sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short;
             } else if (targetDistance === '10k') {
+                 // VARIATION SEMAINE PAR SEMAINE POUR 10K
                  const cycle = i % 4;
                  if (cycle === 1) { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; }
                  else if (cycle === 2) { sessionType = "Seuil Anaérobie"; sessionExo = RUN_PROTOCOLS.threshold; }
@@ -1137,7 +1153,8 @@ export default function App() {
                  else { sessionType = "VMA Longue"; sessionExo = RUN_PROTOCOLS.interval_long; }
             } else if (targetDistance === '21k') {
                  sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold;
-            } else { 
+            } else { // 42k
+                 // Alternance VMA et Seuil Marathon
                  sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; 
                  sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; 
             }
@@ -1145,37 +1162,40 @@ export default function App() {
             sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: sessionType, structure: 'interval', intensity: 'high', duration: "60 min", durationMin: 60, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: `Séance clé pour ${targetDistance}.`, scienceNote: "Développement moteur.", planningAdvice: "Fraîcheur requise.", exercises: sessionExo });
         }
 
-        // Run 3: Sortie Longue
+        // Run 3: Sortie Longue (Durée adaptée)
         if (userData.runDaysPerWeek >= 3) {
             let longRunDuration = 60;
             let longRunType = "Sortie Longue";
             
             if (targetDistance === '21k') {
-                longRunDuration = 80 + (i * 5); 
-                if (longRunDuration > 130) longRunDuration = 90;
+                longRunDuration = 80 + (i * 5); // Monte jusqu'à ~1h50
+                if (longRunDuration > 130) longRunDuration = 90; // Tapering
             }
             if (targetDistance === '42k') {
-                if (i % 3 === 0) { 
+                // Cycle ondulatoire pour éviter la fatigue chronique
+                if (i % 3 === 0) { // Semaine de récupération
                     longRunDuration = 90; 
                     longRunType = "Sortie Longue (Récup)";
                 } else {
-                    longRunDuration = 100 + (i * 10); 
-                    if (longRunDuration > 180) longRunDuration = 150;
+                    longRunDuration = 100 + (i * 10); // Monte progressivement
+                    if (longRunDuration > 180) longRunDuration = 150; // Cap à 3h
                 }
             }
+
+            // Tapering strict pour la fin
             if (isTaper) longRunDuration = longRunDuration * 0.6;
 
-            sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run });
+            sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable. Hydratation test.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run });
         }
         
-        // --- RENFORCEMENT ---
+        // --- RENFORCEMENT POUR RUNNERS (Force / Hypertrophie / Street) ---
         const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek;
         
         for(let s=1; s<=strengthCount; s++) {
             let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = [];
             
             if (userData.strengthFocus === 'force') {
-                if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; } }
+                if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } }
                 else { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; } }
             
             } else if (userData.strengthFocus === 'street_workout') {
@@ -1187,7 +1207,8 @@ export default function App() {
                 streetSessionIndex++;
 
             } else {
-                const splitNames = ["Push", "Pull", "Legs", "Upper", "Full"];
+                // Hypertrophie (CORRIGÉ SELON DEMANDE UTILISATEUR)
+                const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps/Abdos)", "Legs (Jambes)", "Épaules & Bras", "Dos & Pecs"];
                 const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back];
                 const currentSplitIndex = hypertrophySessionIndex % 5;
                 gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex];
@@ -1199,7 +1220,8 @@ export default function App() {
         }
       }
 
-      const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox');
+      // Finalisation semaine
+      const weeklySchedule = getRecommendedSchedule(sessions);
       newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule });
     }
     setPlan(newPlan);
@@ -1236,6 +1258,11 @@ export default function App() {
                     La science de l'entraînement au service de votre objectif. <br/>
                     <span className="text-sm opacity-75">Optimisation de l'interférence • Planification Polarisée</span>
                 </p>
+                <div className="flex justify-center gap-8 mt-8 text-xs font-bold text-slate-400 uppercase tracking-widest animate-in fade-in duration-1000 delay-300">
+                    <div className="flex items-center gap-2"><ShieldCheck size={16}/> Scientifique</div>
+                    <div className="flex items-center gap-2"><Layers size={16}/> Hybride</div>
+                    <div className="flex items-center gap-2"><FlaskConical size={16}/> C-Lab</div>
+                </div>
             </div>
         </div>
       )}
@@ -1329,11 +1356,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* --- CONTENU DYNAMIQUE SELON LE MODE --- */}
             {userData.targetDistance === 'hyrox' ? (
                 <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-200 space-y-6">
                     <h3 className="font-bold text-yellow-800 flex items-center gap-2"><Medal size={18}/> Configuration Hyrox</h3>
-                    
                     <div className="space-y-3">
                          <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-2">Séances HYROX (Mixte)</label>
                          <div className="flex gap-2">
@@ -1342,7 +1367,6 @@ export default function App() {
                              ))}
                          </div>
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
                              <label className="text-xs font-bold text-indigo-800 uppercase">Run Pur (+)</label>
@@ -1395,6 +1419,23 @@ export default function App() {
           // --- ONGLET PROGRAMME ---
           <div className="space-y-4 animate-in slide-in-from-right-4">
             
+            {userData.difficultyFactor > 1 && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
+                    <AlertTriangle className="text-amber-500 shrink-0" size={20}/>
+                    <div>
+                        <h4 className="font-bold text-amber-800 text-sm">Mode Adapté Activé</h4>
+                        <p className="text-xs text-amber-700 mt-1">Le plan a été ralenti de {Math.round((userData.difficultyFactor - 1)*100)}% suite à votre feedback. Les allures sont plus douces pour favoriser la récupération.</p>
+                    </div>
+                </div>
+            )}
+            
+            {feedbackMessage && (
+                <div className={`p-3 rounded-xl text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${feedbackMessage.type === 'warning' ? 'bg-amber-100 text-amber-800' : feedbackMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                    {feedbackMessage.type === 'warning' ? <AlertTriangle size={16}/> : <CheckCircle size={16}/>}
+                    {feedbackMessage.text}
+                </div>
+            )}
+
             {activeTab === 'plan' && step === 'result' && (
              <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4 flex items-start gap-3 text-xs text-indigo-800 animate-in fade-in">
                 <Move size={16} className="shrink-0 mt-0.5"/>
@@ -1537,6 +1578,18 @@ export default function App() {
                             <div className="p-8 text-center text-slate-400 text-xs italic animate-in fade-in">Aucune séance prévue ce jour-là. Repos ! 💤</div>
                         )}
                       </div>
+                    )}
+                    
+                    {/* FEEDBACK SEMAINE - SEULEMENT SI TOUT EST FINI */}
+                    {isOpen && allSessionsCompleted && (
+                        <div className="p-4 border-t border-green-100 bg-green-50 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
+                            <div className="flex items-center gap-2 text-green-800 text-sm font-bold"><Award size={18}/> Semaine Terminée ! Bilan ?</div>
+                            <div className="flex gap-2">
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'easier')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><ThumbsDown size={14}/> Trop dur</button>
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'keep')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 border border-green-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-green-700 transition"><CheckCircle size={14}/> Parfait</button>
+                                <button onClick={() => adaptDifficulty(week.weekNumber, 'harder')} className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-green-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-50 transition"><Zap size={14}/> Trop facile</button>
+                            </div>
+                        </div>
                     )}
                   </div>
                 );
