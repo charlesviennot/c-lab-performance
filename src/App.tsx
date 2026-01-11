@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus
 } from 'lucide-react';
 
 // ==================================================================================
@@ -58,9 +58,16 @@ const calcDist = (minutes, pacePerKm) => {
     return (minutes / pacePerKm).toFixed(1) + " km";
 };
 
-const generateICS = (plan) => {
-    // Simulation pour éviter l'erreur si alert est bloqué
-    console.log("Génération ICS...");
+// --- LOGIQUE RANGE SLIDER ---
+const getTimeConstraints = (distance) => {
+    switch(distance) {
+        case '5k': return { min: 15, max: 50, step: 0.5 };
+        case '10k': return { min: 25, max: 90, step: 1 };
+        case '21k': return { min: 70, max: 160, step: 1 };
+        case '42k': return { min: 160, max: 330, step: 1 }; // 2h40 -> 5h30
+        case 'hyrox': return { min: 50, max: 130, step: 1 };
+        default: return { min: 15, max: 240, step: 1 };
+    }
 };
 
 // --- LOGIQUE D'ALLURES ---
@@ -402,6 +409,102 @@ const STRENGTH_PROTOCOLS = {
   }
 };
 
+// --- NOUVEAU COMPOSANT : CATALOGUE D'EXERCICES ---
+const ExerciseCatalog = ({ onClose, onSelect }) => {
+  const [activeCategory, setActiveCategory] = useState('Jambes');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Agrégation des exercices par groupes musculaires
+  const categories = useMemo(() => ({
+    'Jambes': [ ...STRENGTH_PROTOCOLS.hypertrophy.legs, ...STRENGTH_PROTOCOLS.force.legs, ...STRENGTH_PROTOCOLS.street_workout.legs, ...STRENGTH_PROTOCOLS.hyrox.legs_compromised ],
+    'Pecs / Poussée': [ ...STRENGTH_PROTOCOLS.hypertrophy.push, ...STRENGTH_PROTOCOLS.street_workout.push, ...STRENGTH_PROTOCOLS.hypertrophy.chest_back.filter(e => e.note && e.note.includes('Pecs')), ...STRENGTH_PROTOCOLS.force.upper.filter(e => e.name.includes('Press') || e.name.includes('Dips')) ],
+    'Dos / Tirage': [ ...STRENGTH_PROTOCOLS.hypertrophy.pull, ...STRENGTH_PROTOCOLS.street_workout.pull, ...STRENGTH_PROTOCOLS.hypertrophy.chest_back.filter(e => e.note && e.note.includes('Dos')), ...STRENGTH_PROTOCOLS.force.upper.filter(e => e.name.includes('Row') || e.name.includes('Pull')) ],
+    'Épaules / Bras': [ ...STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms ],
+    'Gainage / Abdos': [ ...STRENGTH_PROTOCOLS.street_workout.skills_core, ...STRENGTH_PROTOCOLS.hypertrophy.pull.filter(e => e.name.includes('Crunch')) ],
+    'Hyrox / Cardio': [ ...STRENGTH_PROTOCOLS.hyrox.functional_endurance, ...STRENGTH_PROTOCOLS.hyrox.sleds_strength, ...STRENGTH_PROTOCOLS.hyrox.ergs_power ]
+  }), []);
+
+  // Filtrage pour éviter les doublons (basé sur le nom)
+  const uniqueExercises = (exList) => {
+      const seen = new Set();
+      return exList.filter(ex => {
+          const duplicate = seen.has(ex.name);
+          seen.add(ex.name);
+          return !duplicate;
+      });
+  };
+
+  const currentList = uniqueExercises(categories[activeCategory] || []).filter(ex => 
+      ex.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[80vh] animate-in zoom-in-95 duration-300">
+        
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 bg-slate-50 relative">
+            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition"><X size={24}/></button>
+            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2 mb-4"><ListPlus className="text-indigo-600"/> Catalogue d'Exercices</h3>
+            
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                <input 
+                    type="text" 
+                    placeholder="Rechercher un exercice..." 
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition font-bold text-slate-700 placeholder:font-normal"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar Categories */}
+            <div className="w-1/3 bg-slate-50 border-r border-slate-100 overflow-y-auto p-2 space-y-1">
+                {Object.keys(categories).map(cat => (
+                    <button 
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition flex items-center justify-between group ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-white hover:text-indigo-600'}`}
+                    >
+                        {cat}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeCategory === cat ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-200 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500'}`}>
+                            {uniqueExercises(categories[cat]).length}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {currentList.length > 0 ? (
+                    currentList.map((ex, idx) => (
+                        <div key={idx} onClick={() => onSelect(ex)} className="p-3 border border-slate-100 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-md transition cursor-pointer group flex items-start gap-3">
+                            <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
+                                {ex.imageUrl ? <img src={ex.imageUrl} className="w-full h-full object-cover" alt=""/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Dumbbell size={16}/></div>}
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-700">{ex.name}</h4>
+                                <p className="text-[10px] text-slate-500 line-clamp-1">{ex.instructions}</p>
+                            </div>
+                            <button className="p-2 bg-indigo-100 text-indigo-600 rounded-lg opacity-0 group-hover:opacity-100 transition"><Plus size={16}/></button>
+                        </div>
+                    ))
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-4">
+                        <Search size={32} className="mb-2 opacity-50"/>
+                        <p className="text-xs">Aucun exercice trouvé pour "{searchTerm}" dans cette catégorie.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- COMPOSANT MODAL EXERCICE ---
 const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex }) => {
   const [imgError, setImgError] = useState(false);
@@ -495,7 +598,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
 
   const imageSrc = !isRun && (exercise.imageUrl && exercise.imageUrl !== "" && !imgError) 
     ? exercise.imageUrl 
-    : `https://source.unsplash.com/800x600/?fitness,${exercise.imageKeyword}`;
+    : `https://placehold.co/800x600/e2e8f0/1e293b?text=${encodeURIComponent(exercise.imageKeyword)}`;
 
   const objectFitClass = "object-cover opacity-90";
   const allSetsDone = !isRun && setsStatus.length > 0 && setsStatus.every(Boolean);
@@ -647,7 +750,7 @@ const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedWeek(i === selectedWeek ? null : i)}>
                 <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
                     <div className={`w-full absolute bottom-0 border-2 border-dashed border-slate-300 bg-slate-50 transition-all duration-500 rounded-t-sm z-0 ${planVal === 0 ? 'h-1' : ''}`} style={{ height: `${planVal > 0 ? (planVal / max) * 100 : 1}%` }}></div>
-                    <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-500'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div>
+                    <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-50'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div>
                 </div>
                 <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
                 </div>
@@ -846,6 +949,8 @@ export default function App() {
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [expandedSession, setExpandedSession] = useState(null);
   const [swapSelection, setSwapSelection] = useState(null);
+  const [exerciseSwapSelection, setExerciseSwapSelection] = useState(null);
+  const [catalogSessionId, setCatalogSessionId] = useState(null);
 
   // --- HANDLERS DÉFINIS DANS APP ---
 
@@ -855,7 +960,7 @@ export default function App() {
 
       if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } 
       if (dist === '10k') { defaultTime = 50; defaultDuration = 10; }
-      if (dist === '21k') { defaultTime = 100; defaultDuration = 12; } 
+      if (dist === '21k') { defaultTime = 105; defaultDuration = 12; } // Ajusté pour être réaliste (1h45)
       if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } 
       if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } 
 
@@ -873,6 +978,9 @@ export default function App() {
       const newTime = Math.max(15, userData.goalTime + (delta * step));
       setUserData({...userData, goalTime: newTime});
   };
+
+  // Helper pour les contraintes de temps actuelles
+  const timeConstraints = getTimeConstraints(userData.targetDistance);
 
   const handleSwapRequest = (weekIdx, dayIdx) => {
       if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) {
@@ -909,6 +1017,70 @@ export default function App() {
         return { ...w, schedule: newSchedule };
       });
       setPlan(newPlan);
+  };
+
+  const handleExerciseSwapRequest = (weekIdx, sessionId, exIdx) => {
+      if (exerciseSwapSelection && exerciseSwapSelection.sessionId === sessionId && exerciseSwapSelection.exIdx === exIdx) {
+          setExerciseSwapSelection(null);
+          return;
+      }
+      
+      if (exerciseSwapSelection) {
+          if (exerciseSwapSelection.sessionId !== sessionId) {
+               setExerciseSwapSelection({ weekIdx, sessionId, exIdx });
+          } else {
+              handleExerciseSwap(weekIdx, sessionId, exerciseSwapSelection.exIdx, exIdx);
+              setExerciseSwapSelection(null);
+          }
+      } else {
+          setExerciseSwapSelection({ weekIdx, sessionId, exIdx });
+      }
+  };
+
+  const handleExerciseSwap = (weekIdx, sessionId, idx1, idx2) => {
+      const newPlan = plan.map(week => {
+          if (week.weekNumber !== weekIdx) return week;
+          const newSessions = week.sessions.map(session => {
+              if (session.id !== sessionId) return session;
+              const newExercises = [...session.exercises];
+              [newExercises[idx1], newExercises[idx2]] = [newExercises[idx2], newExercises[idx1]];
+              return { ...session, exercises: newExercises };
+          });
+          return { ...week, sessions: newSessions };
+      });
+      setPlan(newPlan);
+
+      const id1 = `${sessionId}-ex-${idx1}`;
+      const id2 = `${sessionId}-ex-${idx2}`;
+      const newCompleted = new Set(completedExercises);
+      const has1 = newCompleted.has(id1);
+      const has2 = newCompleted.has(id2);
+
+      if (has1 && !has2) {
+          newCompleted.delete(id1);
+          newCompleted.add(id2);
+      } else if (!has1 && has2) {
+          newCompleted.delete(id2);
+          newCompleted.add(id1);
+      }
+      
+      setCompletedExercises(newCompleted);
+  };
+
+  // --- HANDLER AJOUT EXERCICE ---
+  const handleAddExercise = (exercise) => {
+      if (!catalogSessionId) return;
+      const newPlan = plan.map(week => ({
+          ...week,
+          sessions: week.sessions.map(sess => {
+              if (sess.id === catalogSessionId) {
+                  return { ...sess, exercises: [...(sess.exercises || []), { ...exercise, sets: 3, reps: '10' }] };
+              }
+              return sess;
+          })
+      }));
+      setPlan(newPlan);
+      setCatalogSessionId(null);
   };
 
   const resetWeekOrder = (weekNumber) => {
@@ -1058,41 +1230,39 @@ export default function App() {
           // Logique Hyrox spécifique
           focus = isRaceWeek ? "HYROX RACE" : focus;
 
-          // 1. Run "Moteur"
-          sessions.push({ id: `w${i}-h1`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short });
+          // 1. GESTION RUNNING (Modifié : extraRunSessions contrôle le TOTAL)
+          // Si 0 = Pas de run
+          // Si 1 = Run Engine (VMA)
+          // Si >1 = Run Engine + Endurance
+          const totalRunSessions = userData.extraRunSessions !== undefined ? userData.extraRunSessions : 1;
 
-          // 2. Séance Hyrox Spécifique (Sleds / Wall Balls...)
-          const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"];
-          const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim];
-          
-          for(let h=0; h < userData.hyroxSessionsPerWeek; h++) {
-             const currentSplitIndex = (hyroxSessionIndex + h) % 5;
+          if (totalRunSessions > 0) {
+             // Séance 1 (Prioritaire) : Intervals / Moteur
              sessions.push({ 
-                 id: `w${i}-h${h}`, 
-                 day: `HYROX ${h+1}`, 
-                 category: 'hyrox', 
-                 type: splitNames[currentSplitIndex], 
-                 structure: 'pyramid', 
+                 id: `w${i}-run-eng`, 
+                 day: "RUN ENGINE", 
+                 category: 'run', 
+                 type: "Running Intervals", 
+                 structure: 'interval', 
                  intensity: 'high', 
-                 duration: "60-90 min", 
-                 durationMin: 75, 
-                 paceTarget: "N/A", 
-                 paceGap: 0, 
-                 rpe: 9, 
-                 description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, 
-                 scienceNote: "Endurance de force.", 
-                 planningAdvice: "Simulez les conditions de course.", 
-                 exercises: splitExos[currentSplitIndex], 
-                 tags: ['legs'] 
+                 duration: "45 min", 
+                 durationMin: 45, 
+                 distance: "8 km", 
+                 paceTarget: paces.interval, 
+                 paceGap: paces.gap, 
+                 rpe: 8, 
+                 description: "Travail de VMA pour supporter les transitions.", 
+                 scienceNote: "VO2max Running.", 
+                 planningAdvice: "Essentiel pour le temps global.", 
+                 exercises: RUN_PROTOCOLS.interval_short 
              });
           }
-          hyroxSessionIndex += userData.hyroxSessionsPerWeek; // Incrémenter pour la semaine suivante
 
-          // 2. Ajout Bonus Run
-          for(let r=0; r < userData.extraRunSessions; r++) {
+          // Séances suivantes (Bonus) : Endurance
+          for(let r=1; r < totalRunSessions; r++) {
                sessions.push({ 
                    id: `w${i}-bonus-r${r}`, 
-                   day: `BONUS RUN ${r+1}`, 
+                   day: `RUN ENDURANCE ${r}`, 
                    category: 'run', 
                    type: "Endurance Fondamentale", 
                    structure: 'steady', 
@@ -1110,8 +1280,39 @@ export default function App() {
                });
           }
 
+          // 2. Séance Hyrox Spécifique (Sleds / Wall Balls...)
+          const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"];
+          const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim];
+          
+          // SÉCURITÉ : Valeur par défaut si undefined
+          const hyroxCount = userData.hyroxSessionsPerWeek || 3;
+          
+          for(let h=0; h < hyroxCount; h++) {
+             const currentSplitIndex = (hyroxSessionIndex + h) % 5;
+             sessions.push({ 
+                 id: `w${i}-hyrox-${h}`, 
+                 day: `HYROX ${h+1}`, 
+                 category: 'hyrox', 
+                 type: splitNames[currentSplitIndex], 
+                 structure: 'pyramid', 
+                 intensity: 'high', 
+                 duration: "60-90 min", 
+                 durationMin: 75, 
+                 paceTarget: "N/A", 
+                 paceGap: 0, 
+                 rpe: 9, 
+                 description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, 
+                 scienceNote: "Endurance de force.", 
+                 planningAdvice: "Simulez les conditions de course.", 
+                 exercises: splitExos[currentSplitIndex], 
+                 tags: ['legs'] 
+             });
+          }
+          hyroxSessionIndex += hyroxCount; // Incrémenter pour la semaine suivante
+
           // 3. Ajout Bonus Muscu (Force Pure)
-          for(let s=0; s < userData.extraStrengthSessions; s++) {
+          const extraStrengthCount = userData.extraStrengthSessions || 0;
+          for(let s=0; s < extraStrengthCount; s++) {
                sessions.push({ 
                    id: `w${i}-bonus-s${s}`, 
                    day: `BONUS MUSCU ${s+1}`, 
@@ -1221,7 +1422,7 @@ export default function App() {
       }
 
       // Finalisation semaine
-      const weeklySchedule = getRecommendedSchedule(sessions);
+      const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox');
       newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule });
     }
     setPlan(newPlan);
@@ -1302,6 +1503,13 @@ export default function App() {
             />
         )}
 
+        {catalogSessionId && (
+            <ExerciseCatalog 
+                onClose={() => setCatalogSessionId(null)}
+                onSelect={(ex) => handleAddExercise(ex)}
+            />
+        )}
+
         {step === 'input' ? (
           <div className="-mt-16 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 duration-500">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4">
@@ -1327,15 +1535,35 @@ export default function App() {
                 <label className="text-xs font-bold text-slate-400 uppercase">
                     {userData.targetDistance === 'hyrox' ? "Temps Cible Hyrox" : `Chrono ${userData.targetDistance.toUpperCase()}`}
                 </label>
-                <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition">
-                    <button onClick={() => handleTimeChange(-1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
-                    <div className="flex-1 text-center relative">
-                        <div className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 p-2">
-                            {formatGoalTime(userData.goalTime)}
+                <div className="bg-slate-50 p-2 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition space-y-3">
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => handleTimeChange(-1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
+                        <div className="flex-1 text-center relative">
+                            <div className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 p-2">
+                                {formatGoalTime(userData.goalTime)}
+                            </div>
+                            <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
                         </div>
-                        <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
+                        <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
                     </div>
-                    <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
+                    
+                    {/* SYSTEME DE ROULETTE / SLIDER */}
+                    <div className="px-2 pb-1">
+                        <input 
+                            type="range" 
+                            min={timeConstraints.min} 
+                            max={timeConstraints.max} 
+                            step={timeConstraints.step}
+                            value={userData.goalTime}
+                            onChange={(e) => setUserData({...userData, goalTime: parseFloat(e.target.value)})}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-bold uppercase">
+                            <span>{formatGoalTime(timeConstraints.min)}</span>
+                            <span className="text-indigo-400">Glisser pour ajuster</span>
+                            <span>{formatGoalTime(timeConstraints.max)}</span>
+                        </div>
+                    </div>
                 </div>
                 {userData.targetDistance !== 'hyrox' && (
                     <p className="text-xs text-slate-400 text-center mt-2">Allure cible : {formatPace(userData.goalTime / (userData.targetDistance === '21k' ? 21.1 : userData.targetDistance === '42k' ? 42.195 : parseInt(userData.targetDistance)))}/km</p>
@@ -1369,7 +1597,7 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
-                             <label className="text-xs font-bold text-indigo-800 uppercase">Run Pur (+)</label>
+                             <label className="text-xs font-bold text-indigo-800 uppercase">Séances Running</label>
                              <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-yellow-200">
                                  <button onClick={() => setUserData({...userData, extraRunSessions: Math.max(0, userData.extraRunSessions - 1)})} className="p-2 bg-indigo-100 rounded-lg text-indigo-700"><Minus size={14}/></button>
                                  <span className="flex-1 text-center font-bold text-indigo-900">{userData.extraRunSessions}</span>
@@ -1440,7 +1668,7 @@ export default function App() {
              <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4 flex items-start gap-3 text-xs text-indigo-800 animate-in fade-in">
                 <Move size={16} className="shrink-0 mt-0.5"/>
                 <p>
-                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours.
+                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours. Même chose pour l'ordre des exercices dans une séance.
                 </p>
              </div>
             )}
@@ -1544,8 +1772,12 @@ export default function App() {
                                             {session.exercises.map((exo, idx) => {
                                                 const uniqueExerciseId = `${session.id}-ex-${idx}`;
                                                 const isChecked = completedExercises.has(uniqueExerciseId);
+                                                const isSwapSelected = exerciseSwapSelection && exerciseSwapSelection.sessionId === session.id && exerciseSwapSelection.exIdx === idx;
                                                 return (
-                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}`}>
+                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : isSwapSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 animate-pulse' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} ${exerciseSwapSelection && !isSwapSelected ? 'cursor-pointer hover:bg-slate-100' : ''}`} onClick={() => { if (exerciseSwapSelection) handleExerciseSwapRequest(week.weekNumber, session.id, idx); }}>
+                                                        <div onClick={(e) => { e.stopPropagation(); handleExerciseSwapRequest(week.weekNumber, session.id, idx); }} className={`p-1 rounded-md transition-colors cursor-pointer ${isSwapSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`} title="Déplacer cet exercice">
+                                                            <ArrowRightLeft size={14} />
+                                                        </div>
                                                         {session.category !== 'run' && (
                                                         <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
                                                             {isChecked ? <CheckSquare size={20} className="text-green-500" /> : <Square size={20} className="text-slate-300 hover:text-indigo-400" />}
@@ -1565,6 +1797,11 @@ export default function App() {
                                                 );
                                             })}
                                         </div>
+                                        {/* Bouton Ajouter Exercice */}
+                                        <button onClick={() => setCatalogSessionId(session.id)} className="w-full mt-2 py-2 border border-dashed border-indigo-200 text-indigo-500 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition flex items-center justify-center gap-1">
+                                            <Plus size={14}/> Ajouter un exercice
+                                        </button>
+
                                         {/* Bouton global pour valider la séance entière */}
                                         { (session.category === 'run' || isSessionFullyDone) && (
                                             <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1 animate-in fade-in slide-in-from-bottom-2"><CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}</button>
