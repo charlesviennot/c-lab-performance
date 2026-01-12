@@ -66,7 +66,7 @@ const formatStopwatch = (seconds) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// Fonction d'export TCX Améliorée pour Strava
+// Fonction d'export TCX Améliorée pour Strava (Format Hevy-like)
 const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
   const startTime = date.toISOString();
   const endTime = new Date(date.getTime() + durationSeconds * 1000).toISOString();
@@ -75,38 +75,62 @@ const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
   const kcalPerMin = session.category === 'run' ? 12 : 8;
   const calories = Math.floor((durationSeconds / 60) * kcalPerMin); 
   
-  // Mapping categories : Strava utilise Running ou Other (pour Muscu/Hyrox)
-  // 'Running' est standard dans TCX v2. Pour la muscu, on utilise 'Other' qui apparait souvent comme 'Activité' ou 'Entraînement'
   let sport = 'Other';
   if (session.category === 'run') sport = 'Running';
   
   const distanceMeters = session.distance ? parseFloat(session.distance) * 1000 : 0;
 
-  // Construction des notes détaillées
-  let notesContent = `C-Lab Performance: ${session.type}\n${session.description}\n\n--- DÉTAIL SÉANCE ---\n`;
+  // --- CONSTRUCTION DU RÉSUMÉ FORMAT "HEVY / STRONG" ---
+  let notesContent = `🚀 C-Lab Performance\n${session.type}\n${session.description}\n\n`;
   
   if (session.exercises) {
       session.exercises.forEach((ex, idx) => {
+          notesContent += `────────────────────\n`;
+          notesContent += `${idx + 1}. ${ex.name.toUpperCase()}\n`;
+          
           const uniqueId = `${session.id}-ex-${idx}`;
           const log = exercisesLog[uniqueId];
-          
-          // Récupération des poids si existants
-          let weightsStr = "";
-          if (log && log.weights && log.weights.some(w => w && w !== "")) {
-              const validWeights = log.weights.filter(w => w && w !== "").map(w => `${w}kg`);
-              if (validWeights.length > 0) {
-                  weightsStr = ` | Charges: ${validWeights.join(", ")}`;
-              }
+          const targetReps = ex.reps.replace(' reps', '').replace('/', '-'); // Nettoyage simple
+
+          // Récupération du nombre de séries
+          let setsCount = 1;
+          if (typeof ex.sets === 'number') setsCount = ex.sets;
+          else if (typeof ex.sets === 'string') {
+              const match = ex.sets.match(/^(\d+)/);
+              if (match) setsCount = parseInt(match[1]);
           }
-          
-          notesContent += `✅ ${ex.name} (${ex.sets} x ${ex.reps})${weightsStr}\n`;
+
+          // Si on a des logs de poids enregistrés par l'utilisateur
+          if (log && log.weights && log.weights.length > 0) {
+               log.weights.forEach((w, setIdx) => {
+                   // Si le poids est entré, on l'affiche, sinon c'est Poids du corps ou juste reps
+                   if (w && w !== "") {
+                       notesContent += `Set ${setIdx + 1}: ${w}kg × ${targetReps}\n`;
+                   } else {
+                       notesContent += `Set ${setIdx + 1}: ${targetReps}\n`;
+                   }
+               });
+               // Si l'utilisateur a fait moins de séries que prévu dans le log (cas rare mais possible)
+               if (log.weights.length < setsCount) {
+                   for (let i = log.weights.length; i < setsCount; i++) {
+                        notesContent += `Set ${i + 1}: ${targetReps}\n`;
+                   }
+               }
+          } else {
+               // Fallback : Si aucun poids n'est saisi, on affiche le format standard pour chaque série
+               for(let i=0; i<setsCount; i++) {
+                   notesContent += `Set ${i + 1}: ${targetReps}\n`;
+               }
+          }
       });
   }
   
-  notesContent += `\nIntensité Ressentie (RPE): ${session.rpe}/10\nDurée effective: ${formatStopwatch(durationSeconds)}`;
+  notesContent += `────────────────────\n`;
+  notesContent += `🔥 RPE: ${session.rpe}/10\n`;
+  notesContent += `⏱️ Temps: ${formatStopwatch(durationSeconds)}`;
 
-  // Échappement des caractères spéciaux XML
-  const safeNotes = notesContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Échappement des caractères spéciaux XML pour éviter les bugs d'import
+  const safeNotes = notesContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const tcxContent = `<?xml version="1.0" encoding="UTF-8"?>
 <TrainingCenterDatabase
@@ -139,7 +163,7 @@ const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
         <UnitId>0</UnitId>
         <ProductID>1</ProductID>
         <Version>
-          <VersionMajor>1</VersionMajor>
+          <VersionMajor>2</VersionMajor>
           <VersionMinor>0</VersionMinor>
           <BuildMajor>0</BuildMajor>
           <BuildMinor>0</BuildMinor>
