@@ -66,16 +66,26 @@ const formatStopwatch = (seconds) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// Fonction d'export TCX pour Strava
+// Fonction d'export TCX Améliorée pour Strava
 const downloadTCX = (session, durationSeconds, date) => {
   const startTime = date.toISOString();
-  // Estimation calorique basique : ~10 kcal/min pour effort moyen/haut
+  const endTime = new Date(date.getTime() + durationSeconds * 1000).toISOString();
+  
+  // Estimation calorique : ~10 kcal/min pour effort moyen/haut
   const calories = Math.floor((durationSeconds / 60) * 10); 
-  const sport = session.category === 'run' ? 'Running' : 'Other';
+  
+  // Mapping categories : Strava reconnait surtout Running et Biking. Le reste va en "Other".
+  let sport = 'Other';
+  if (session.category === 'run') sport = 'Running';
+  
   const distanceMeters = session.distance ? parseFloat(session.distance) * 1000 : 0;
 
+  // Construction XML avec indentations minimales pour éviter les erreurs de parsing
   const tcxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<TrainingCenterDatabase xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd" xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<TrainingCenterDatabase
+  xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"
+  xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Activities>
     <Activity Sport="${sport}">
       <Id>${startTime}</Id>
@@ -85,8 +95,29 @@ const downloadTCX = (session, durationSeconds, date) => {
         <Calories>${calories}</Calories>
         <Intensity>Active</Intensity>
         <TriggerMethod>Manual</TriggerMethod>
+        <Track>
+          <Trackpoint>
+            <Time>${startTime}</Time>
+            <DistanceMeters>0</DistanceMeters>
+          </Trackpoint>
+          <Trackpoint>
+            <Time>${endTime}</Time>
+            <DistanceMeters>${distanceMeters}</DistanceMeters>
+          </Trackpoint>
+        </Track>
       </Lap>
-      <Notes>C-Lab: ${session.type}. ${session.description}</Notes>
+      <Notes>${session.type} (${session.description}) - RPE: ${session.rpe}/10. Généré par C-Lab Performance.</Notes>
+      <Creator xsi:type="Device_t">
+        <Name>C-Lab Performance</Name>
+        <UnitId>0</UnitId>
+        <ProductID>1</ProductID>
+        <Version>
+          <VersionMajor>1</VersionMajor>
+          <VersionMinor>0</VersionMinor>
+          <BuildMajor>0</BuildMajor>
+          <BuildMinor>0</BuildMinor>
+        </Version>
+      </Creator>
     </Activity>
   </Activities>
 </TrainingCenterDatabase>`;
@@ -95,7 +126,11 @@ const downloadTCX = (session, durationSeconds, date) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `clab_${session.type.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.tcx`;
+  // Nom de fichier propre : date_type.tcx
+  const dateStr = new Date().toISOString().split('T')[0];
+  const safeType = session.type.replace(/\s+/g, '_').toLowerCase();
+  link.download = `clab_${dateStr}_${safeType}.tcx`;
+  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
