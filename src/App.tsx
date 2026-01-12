@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus, Play, Pause, StopCircle, Download
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal
 } from 'lucide-react';
 
 // ==================================================================================
@@ -58,115 +58,9 @@ const calcDist = (minutes, pacePerKm) => {
     return (minutes / pacePerKm).toFixed(1) + " km";
 };
 
-const formatStopwatch = (seconds) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-};
-
-// Fonction d'export TCX Améliorée pour Strava (Format Hevy-like)
-const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
-  const startTime = date.toISOString();
-  const endTime = new Date(date.getTime() + durationSeconds * 1000).toISOString();
-  
-  // Estimation calorique : ~10 kcal/min pour effort moyen/haut
-  const calories = Math.floor((durationSeconds / 60) * 10); 
-  
-  let sport = 'Other';
-  if (session.category === 'run') sport = 'Running';
-  
-  const distanceMeters = session.distance ? parseFloat(session.distance) * 1000 : 0;
-
-  // Construction du résumé détaillé des exercices et poids
-  let notesContent = `${session.type}\n${session.description}\n---\n`;
-  if (session.exercises) {
-      session.exercises.forEach((ex, idx) => {
-          const uniqueId = `${session.id}-ex-${idx}`;
-          const log = exercisesLog[uniqueId];
-          
-          notesContent += `• ${ex.name} (${ex.sets} x ${ex.reps})`;
-          
-          if (log && log.weights && log.weights.some(w => w)) {
-              // Récupérer uniquement les poids non vides
-              const weightsStr = log.weights.filter(w => w && w !== '').map(w => `${w}kg`).join(', ');
-              if (weightsStr) {
-                  notesContent += ` : ${weightsStr}`;
-              }
-          }
-          notesContent += '\n';
-      });
-  }
-  notesContent += `\nRPE: ${session.rpe}/10. Généré par C-Lab Performance.`;
-
-  // Échappement des caractères spéciaux XML
-  const safeNotes = notesContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  const tcxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<TrainingCenterDatabase
-  xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"
-  xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Activities>
-    <Activity Sport="${sport}">
-      <Id>${startTime}</Id>
-      <Lap StartTime="${startTime}">
-        <TotalTimeSeconds>${durationSeconds}</TotalTimeSeconds>
-        <DistanceMeters>${distanceMeters}</DistanceMeters>
-        <Calories>${calories}</Calories>
-        <Intensity>Active</Intensity>
-        <TriggerMethod>Manual</TriggerMethod>
-        <Track>
-          <Trackpoint>
-            <Time>${startTime}</Time>
-            <DistanceMeters>0</DistanceMeters>
-          </Trackpoint>
-          <Trackpoint>
-            <Time>${endTime}</Time>
-            <DistanceMeters>${distanceMeters}</DistanceMeters>
-          </Trackpoint>
-        </Track>
-      </Lap>
-      <Notes>${safeNotes}</Notes>
-      <Creator xsi:type="Device_t">
-        <Name>C-Lab Performance</Name>
-        <UnitId>0</UnitId>
-        <ProductID>1</ProductID>
-        <Version>
-          <VersionMajor>1</VersionMajor>
-          <VersionMinor>0</VersionMinor>
-          <BuildMajor>0</BuildMajor>
-          <BuildMinor>0</BuildMinor>
-        </Version>
-      </Creator>
-    </Activity>
-  </Activities>
-</TrainingCenterDatabase>`;
-
-  const blob = new Blob([tcxContent], {type: 'application/vnd.garmin.tcx+xml'});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  const dateStr = new Date().toISOString().split('T')[0];
-  const safeType = session.type.replace(/\s+/g, '_').toLowerCase();
-  link.download = `clab_${dateStr}_${safeType}.tcx`;
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-// --- LOGIQUE RANGE SLIDER ---
-const getTimeConstraints = (distance) => {
-    switch(distance) {
-        case '5k': return { min: 15, max: 50, step: 0.5 };
-        case '10k': return { min: 25, max: 90, step: 1 };
-        case '21k': return { min: 70, max: 160, step: 1 };
-        case '42k': return { min: 160, max: 330, step: 1 }; // 2h40 -> 5h30
-        case 'hyrox': return { min: 50, max: 130, step: 1 };
-        default: return { min: 15, max: 240, step: 1 };
-    }
+const generateICS = (plan) => {
+    // Simulation pour éviter l'erreur si alert est bloqué
+    console.log("Génération ICS...");
 };
 
 // --- LOGIQUE D'ALLURES ---
@@ -225,10 +119,13 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
 
     if (isHyrox) {
         // --- LOGIQUE HYROX ---
+        // Priorité aux séances Hyrox, puis Force, puis Run
         const hyroxSessions = sessions.filter(s => s.category === 'hyrox');
         const strengthSessions = sessions.filter(s => s.category === 'strength');
         const runSessions = sessions.filter(s => s.category === 'run');
 
+        // Distribution idéale Hyrox
+        // Hyrox WODs: Mar, Jeu, Sam
         const hyroxDays = [1, 3, 5, 0, 2, 4, 6]; 
         hyroxSessions.forEach((s, i) => {
             const day = hyroxDays[i % 7];
@@ -236,6 +133,7 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
             scheduleData[day].focus = "HYROX WOD";
         });
 
+        // Force: Lun, Ven
         const strengthDays = [0, 4, 2, 6, 1, 3, 5];
         let strIdx = 0;
         strengthDays.forEach(day => {
@@ -246,15 +144,18 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
             }
         });
 
+        // Run: Mer, Dim (Endurance)
         const runDays = [2, 6, 0, 4, 1, 3, 5];
         let runIdx = 0;
         runDays.forEach(day => {
             if (runIdx < runSessions.length) {
+                // Si jour vide
                 if (scheduleData[day].sessions.length === 0) {
                     scheduleData[day].sessions.push(runSessions[runIdx]);
                     scheduleData[day].focus = "Endurance";
                     runIdx++;
                 } 
+                // Bi-quotidien possible si jour de renfo pur (pas Hyrox WOD car trop intense)
                 else if (scheduleData[day].sessions.length === 1 && scheduleData[day].sessions[0].category === 'strength') {
                     scheduleData[day].sessions.push(runSessions[runIdx]);
                     runIdx++;
@@ -267,18 +168,21 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
         const runs = sessions.filter(s => s.category === 'run');
         const gyms = sessions.filter(s => s.category === 'strength');
 
+        // 1. Sortie Longue (Dimanche)
         const longRun = runs.find(r => r.type.includes("Sortie Longue") || r.type.includes("Endurance"));
         if (longRun) {
             scheduleData[6].sessions.push(longRun);
             scheduleData[6].focus = "Volume";
         }
 
+        // 2. Séance Qualité (Mardi)
         const qualityRun = runs.find(r => (r.intensity === 'high' || r.intensity === 'medium') && r.id !== longRun?.id);
         if (qualityRun) {
             scheduleData[1].sessions.push(qualityRun);
             scheduleData[1].focus = "Intensité";
         }
 
+        // 3. Muscu (Mercredi ou Vendredi)
         const heavySession = gyms.find(g => g.type.includes("Sled") || g.type.includes("Jambes") || g.type.includes("Legs"));
         const otherGyms = gyms.filter(g => g.id !== heavySession?.id);
 
@@ -292,6 +196,7 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
             }
         }
 
+        // 4. Remplissage
         let gymIdx = 0;
         const fillOrder = [0, 2, 3, 5]; 
         
@@ -497,110 +402,13 @@ const STRENGTH_PROTOCOLS = {
   }
 };
 
-// --- NOUVEAU COMPOSANT : CATALOGUE D'EXERCICES ---
-const ExerciseCatalog = ({ onClose, onSelect }) => {
-  const [activeCategory, setActiveCategory] = useState('Jambes');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Agrégation des exercices par groupes musculaires
-  const categories = useMemo(() => ({
-    'Jambes': [ ...STRENGTH_PROTOCOLS.hypertrophy.legs, ...STRENGTH_PROTOCOLS.force.legs, ...STRENGTH_PROTOCOLS.street_workout.legs, ...STRENGTH_PROTOCOLS.hyrox.legs_compromised ],
-    'Pecs / Poussée': [ ...STRENGTH_PROTOCOLS.hypertrophy.push, ...STRENGTH_PROTOCOLS.street_workout.push, ...STRENGTH_PROTOCOLS.hypertrophy.chest_back.filter(e => e.note && e.note.includes('Pecs')), ...STRENGTH_PROTOCOLS.force.upper.filter(e => e.name.includes('Press') || e.name.includes('Dips')) ],
-    'Dos / Tirage': [ ...STRENGTH_PROTOCOLS.hypertrophy.pull, ...STRENGTH_PROTOCOLS.street_workout.pull, ...STRENGTH_PROTOCOLS.hypertrophy.chest_back.filter(e => e.note && e.note.includes('Dos')), ...STRENGTH_PROTOCOLS.force.upper.filter(e => e.name.includes('Row') || e.name.includes('Pull')) ],
-    'Épaules / Bras': [ ...STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms ],
-    'Gainage / Abdos': [ ...STRENGTH_PROTOCOLS.street_workout.skills_core, ...STRENGTH_PROTOCOLS.hypertrophy.pull.filter(e => e.name.includes('Crunch')) ],
-    'Hyrox / Cardio': [ ...STRENGTH_PROTOCOLS.hyrox.functional_endurance, ...STRENGTH_PROTOCOLS.hyrox.sleds_strength, ...STRENGTH_PROTOCOLS.hyrox.ergs_power ]
-  }), []);
-
-  // Filtrage pour éviter les doublons (basé sur le nom)
-  const uniqueExercises = (exList) => {
-      const seen = new Set();
-      return exList.filter(ex => {
-          const duplicate = seen.has(ex.name);
-          seen.add(ex.name);
-          return !duplicate;
-      });
-  };
-
-  const currentList = uniqueExercises(categories[activeCategory] || []).filter(ex => 
-      ex.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[80vh] animate-in zoom-in-95 duration-300">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 bg-slate-50 relative">
-            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition"><X size={24}/></button>
-            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2 mb-4"><ListPlus className="text-indigo-600"/> Catalogue d'Exercices</h3>
-            
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                <input 
-                    type="text" 
-                    placeholder="Rechercher un exercice..." 
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition font-bold text-slate-700 placeholder:font-normal"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar Categories */}
-            <div className="w-1/3 bg-slate-50 border-r border-slate-100 overflow-y-auto p-2 space-y-1">
-                {Object.keys(categories).map(cat => (
-                    <button 
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition flex items-center justify-between group ${activeCategory === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-500 hover:bg-white hover:text-indigo-600'}`}
-                    >
-                        {cat}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeCategory === cat ? 'bg-indigo-500 text-indigo-100' : 'bg-slate-200 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500'}`}>
-                            {uniqueExercises(categories[cat]).length}
-                        </span>
-                    </button>
-                ))}
-            </div>
-
-            {/* List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {currentList.length > 0 ? (
-                    currentList.map((ex, idx) => (
-                        <div key={idx} onClick={() => onSelect(ex)} className="p-3 border border-slate-100 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-md transition cursor-pointer group flex items-start gap-3">
-                            <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
-                                {ex.imageUrl ? <img src={ex.imageUrl} className="w-full h-full object-cover" alt=""/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Dumbbell size={16}/></div>}
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-700">{ex.name}</h4>
-                                <p className="text-[10px] text-slate-500 line-clamp-1">{ex.instructions}</p>
-                            </div>
-                            <button className="p-2 bg-indigo-100 text-indigo-600 rounded-lg opacity-0 group-hover:opacity-100 transition"><Plus size={16}/></button>
-                        </div>
-                    ))
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-4">
-                        <Search size={32} className="mb-2 opacity-50"/>
-                        <p className="text-xs">Aucun exercice trouvé pour "{searchTerm}" dans cette catégorie.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // --- COMPOSANT MODAL EXERCICE ---
-const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex, savedData }) => {
+const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex }) => {
   const [imgError, setImgError] = useState(false);
   const [setsStatus, setSetsStatus] = useState([]);
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(null);
-  const [weights, setWeights] = useState([]); // État pour stocker les poids
   
   const isRun = category === 'run'; 
   const audioRef = useRef(null);
@@ -615,15 +423,8 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
             if (match) setsCount = parseInt(match[1]);
         }
         setSetsStatus(new Array(setsCount).fill(false));
-        
-        // Initialisation des poids (depuis sauvegarde ou vide)
-        if (savedData && savedData.weights) {
-            setWeights(savedData.weights);
-        } else {
-            setWeights(new Array(setsCount).fill(''));
-        }
     }
-  }, [exercise, isRun, savedData]);
+  }, [exercise, isRun]);
 
   // Logique du Timer
   useEffect(() => {
@@ -648,12 +449,6 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     setIsTimerRunning(false);
     setTimer(0);
     setActiveSetIndex(null);
-  };
-
-  const handleWeightChange = (index, val) => {
-      const newWeights = [...weights];
-      newWeights[index] = val;
-      setWeights(newWeights);
   };
 
   const toggleSet = (index) => {
@@ -685,7 +480,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
           onComplete(exerciseId); 
       } else {
           const uniqueExerciseId = `${exerciseId}-ex-${exerciseIndex}`;
-          onComplete(uniqueExerciseId, true, { weights }); // On passe les poids lors de la validation
+          onComplete(uniqueExerciseId, true); 
       }
       onClose();
   };
@@ -700,7 +495,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
 
   const imageSrc = !isRun && (exercise.imageUrl && exercise.imageUrl !== "" && !imgError) 
     ? exercise.imageUrl 
-    : `https://placehold.co/800x600/e2e8f0/1e293b?text=${encodeURIComponent(exercise.imageKeyword)}`;
+    : `https://source.unsplash.com/800x600/?fitness,${exercise.imageKeyword}`;
 
   const objectFitClass = "object-cover opacity-90";
   const allSetsDone = !isRun && setsStatus.length > 0 && setsStatus.every(Boolean);
@@ -750,24 +545,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
                 <div className="space-y-3">
                     {setsStatus.map((isDone, idx) => (
                         <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span>
-                                <span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span>
-                            </div>
-                            
-                            {/* INPUT POIDS (KG) */}
-                            <div className="flex items-center gap-2 mr-auto ml-4">
-                                <input 
-                                    type="number" 
-                                    placeholder="kg" 
-                                    className="w-16 py-1 px-2 text-center bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                                    value={weights[idx] || ''}
-                                    onChange={(e) => handleWeightChange(idx, e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                                <span className="text-[10px] text-slate-400 font-bold">KG</span>
-                            </div>
-
+                            <div className="flex items-center gap-3"><span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span><span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span></div>
                             <button onClick={() => toggleSet(idx)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}>{isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}</button>
                         </div>
                     ))}
@@ -796,58 +574,10 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
   );
 };
 
-// --- NOUVEAU : COMPOSANT TIMER LIVE ---
-const LiveSessionTimer = ({ onFinish, timerRef }) => {
-    const [seconds, setSeconds] = useState(0);
-    const [isActive, setIsActive] = useState(true);
-
-    useEffect(() => {
-        let interval = null;
-        if (isActive) {
-            interval = setInterval(() => {
-                setSeconds(s => {
-                    const newValue = s + 1;
-                    if(timerRef) timerRef.current = newValue;
-                    return newValue;
-                });
-            }, 1000);
-        } else if (!isActive && seconds !== 0) {
-            clearInterval(interval);
-        }
-        return () => clearInterval(interval);
-    }, [isActive, seconds, timerRef]);
-
-    const handleStop = () => {
-        setIsActive(false);
-        onFinish(seconds); // Passe le temps final au parent
-    };
-
-    return (
-        <div className="bg-slate-900 text-white p-4 rounded-xl shadow-inner mb-4 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-red-500 animate-pulse' : 'bg-slate-500'}`}></div>
-                    <div className="text-4xl font-black font-mono tracking-widest">{formatStopwatch(seconds)}</div>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setIsActive(!isActive)} className={`p-3 rounded-full transition ${isActive ? 'bg-yellow-500 text-yellow-900 hover:bg-yellow-400' : 'bg-green-500 text-white hover:bg-green-600'}`}>
-                        {isActive ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
-                    </button>
-                    <button onClick={handleStop} className="p-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition">
-                        <StopCircle size={20} />
-                    </button>
-                </div>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2 font-mono uppercase text-center">Enregistrement en cours...</p>
-        </div>
-    );
-};
-
 // ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide, WorkoutViz, RpeBadge)
 // (Note: ces composants sont définis ici pour la complétude du fichier final, je les inclus pour éviter les erreurs de référence)
 
 const InteractiveInterference = () => {
-    // ... (Code identique au précédent, omis pour brièveté)
     const [scenario, setScenario] = useState('far'); 
     return (
         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4">
@@ -917,7 +647,7 @@ const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedWeek(i === selectedWeek ? null : i)}>
                 <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
                     <div className={`w-full absolute bottom-0 border-2 border-dashed border-slate-300 bg-slate-50 transition-all duration-500 rounded-t-sm z-0 ${planVal === 0 ? 'h-1' : ''}`} style={{ height: `${planVal > 0 ? (planVal / max) * 100 : 1}%` }}></div>
-                    <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-50'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div>
+                    <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-500'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div>
                 </div>
                 <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
                 </div>
@@ -1105,31 +835,17 @@ export default function App() {
   const [expandedWeek, setExpandedWeek] = useState(() => loadState('expandedWeek', 1));
   const [completedSessions, setCompletedSessions] = useState(() => loadState('completedSessions', new Set()));
   const [completedExercises, setCompletedExercises] = useState(() => loadState('completedExercises', new Set()));
-  
-  // NOUVEAU STATE POUR SAUVEGARDER LES POIDS
-  const [exercisesLog, setExercisesLog] = useState(() => loadState('exercisesLog', {}));
 
   useEffect(() => {
-    // On ajoute exercisesLog à la sauvegarde
-    const dataToSave = { 
-        step, activeTab, userData, plan, expandedWeek, 
-        completedSessions: Array.from(completedSessions), 
-        completedExercises: Array.from(completedExercises),
-        exercisesLog 
-    };
+    const dataToSave = { step, activeTab, userData, plan, expandedWeek, completedSessions: Array.from(completedSessions), completedExercises: Array.from(completedExercises) };
     localStorage.setItem('clab_storage', JSON.stringify(dataToSave));
-  }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises, exercisesLog]);
+  }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises]);
 
   const [modalExercise, setModalExercise] = useState(null); 
   const [filteredSessionIds, setFilteredSessionIds] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
   const [expandedSession, setExpandedSession] = useState(null);
   const [swapSelection, setSwapSelection] = useState(null);
-  const [exerciseSwapSelection, setExerciseSwapSelection] = useState(null);
-  const [catalogSessionId, setCatalogSessionId] = useState(null);
-  const [activeTimerSessionId, setActiveTimerSessionId] = useState(null); // Pour gérer quel timer est ouvert
-  const [lastCompletedData, setLastCompletedData] = useState(null); // Nouvelle donnée pour l'écran de fin
-  const currentTimerRef = useRef(0);
 
   // --- HANDLERS DÉFINIS DANS APP ---
 
@@ -1139,7 +855,7 @@ export default function App() {
 
       if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } 
       if (dist === '10k') { defaultTime = 50; defaultDuration = 10; }
-      if (dist === '21k') { defaultTime = 105; defaultDuration = 12; } // Ajusté pour être réaliste (1h45)
+      if (dist === '21k') { defaultTime = 100; defaultDuration = 12; } 
       if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } 
       if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } 
 
@@ -1157,9 +873,6 @@ export default function App() {
       const newTime = Math.max(15, userData.goalTime + (delta * step));
       setUserData({...userData, goalTime: newTime});
   };
-
-  // Helper pour les contraintes de temps actuelles
-  const timeConstraints = getTimeConstraints(userData.targetDistance);
 
   const handleSwapRequest = (weekIdx, dayIdx) => {
       if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) {
@@ -1196,86 +909,6 @@ export default function App() {
         return { ...w, schedule: newSchedule };
       });
       setPlan(newPlan);
-  };
-
-  const handleExerciseSwapRequest = (weekIdx, sessionId, exIdx) => {
-      if (exerciseSwapSelection && exerciseSwapSelection.sessionId === sessionId && exerciseSwapSelection.exIdx === exIdx) {
-          setExerciseSwapSelection(null);
-          return;
-      }
-      
-      if (exerciseSwapSelection) {
-          if (exerciseSwapSelection.sessionId !== sessionId) {
-               setExerciseSwapSelection({ weekIdx, sessionId, exIdx });
-          } else {
-              handleExerciseSwap(weekIdx, sessionId, exerciseSwapSelection.exIdx, exIdx);
-              setExerciseSwapSelection(null);
-          }
-      } else {
-          setExerciseSwapSelection({ weekIdx, sessionId, exIdx });
-      }
-  };
-
-  const handleExerciseSwap = (weekIdx, sessionId, idx1, idx2) => {
-      const newPlan = plan.map(week => {
-          if (week.weekNumber !== weekIdx) return week;
-          const newSessions = week.sessions.map(session => {
-              if (session.id !== sessionId) return session;
-              const newExercises = [...session.exercises];
-              [newExercises[idx1], newExercises[idx2]] = [newExercises[idx2], newExercises[idx1]];
-              return { ...session, exercises: newExercises };
-          });
-          return { ...week, sessions: newSessions };
-      });
-      setPlan(newPlan);
-
-      const id1 = `${sessionId}-ex-${idx1}`;
-      const id2 = `${sessionId}-ex-${idx2}`;
-      const newCompleted = new Set(completedExercises);
-      const has1 = newCompleted.has(id1);
-      const has2 = newCompleted.has(id2);
-
-      if (has1 && !has2) {
-          newCompleted.delete(id1);
-          newCompleted.add(id2);
-      } else if (!has1 && has2) {
-          newCompleted.delete(id2);
-          newCompleted.add(id1);
-      }
-      
-      setCompletedExercises(newCompleted);
-  };
-
-  // --- HANDLER AJOUT EXERCICE ---
-  const handleAddExercise = (exercise) => {
-      if (!catalogSessionId) return;
-      const newPlan = plan.map(week => ({
-          ...week,
-          sessions: week.sessions.map(sess => {
-              if (sess.id === catalogSessionId) {
-                  return { ...sess, exercises: [...(sess.exercises || []), { ...exercise, sets: 3, reps: '10' }] };
-              }
-              return sess;
-          })
-      }));
-      setPlan(newPlan);
-      setCatalogSessionId(null);
-  };
-
-  const handleDeleteExercise = (weekIdx, sessionId, exIdx) => {
-    const newPlan = plan.map(week => {
-        if (week.weekNumber !== weekIdx) return week;
-        const newSessions = week.sessions.map(session => {
-            if (session.id !== sessionId) return session;
-            const newExercises = session.exercises.filter((_, i) => i !== exIdx);
-            return { ...session, exercises: newExercises };
-        });
-        return { ...week, sessions: newSessions };
-    });
-    setPlan(newPlan);
-    
-    // On pourrait aussi nettoyer completedExercises mais ce n'est pas critique
-    // car les clés sont basées sur l'index qui va changer
   };
 
   const resetWeekOrder = (weekNumber) => {
@@ -1350,28 +983,6 @@ export default function App() {
     }
   };
 
-  // Nouvelle fonction pour gérer la fin du timer
-  const handleTimerFinish = (sessionId, duration) => {
-      toggleSession(sessionId);
-      setActiveTimerSessionId(null);
-      if(currentTimerRef) currentTimerRef.current = 0; // Reset ref
-
-      // Trouver la session pour les données d'export
-      let sessionData = null;
-      for (const week of plan) {
-          const s = week.sessions.find(sess => sess.id === sessionId);
-          if (s) { sessionData = s; break; }
-      }
-      
-      if (sessionData) {
-          setLastCompletedData({ 
-              session: sessionData, 
-              duration: duration, 
-              date: new Date() 
-          });
-      }
-  };
-
   const unvalidateSession = (id) => {
       const newSet = new Set(completedSessions);
       if (newSet.has(id)) {
@@ -1390,13 +1001,9 @@ export default function App() {
       setCompletedExercises(newSet);
   };
 
-  const handleSessionCompleteFromModal = (sessionId, isExercise = false, data = null) => {
+  const handleSessionCompleteFromModal = (sessionId, isExercise = false) => {
        if (isExercise) {
            toggleExercise(sessionId); 
-           // Sauvegarde des données supplémentaires (poids)
-           if (data) {
-               setExercisesLog(prev => ({...prev, [sessionId]: data}));
-           }
        } else {
            if (!completedSessions.has(sessionId)) {
                toggleSession(sessionId);
@@ -1415,27 +1022,11 @@ export default function App() {
   };
 
   const handleDayClick = (daySessionIds) => {
-      if (!daySessionIds || daySessionIds.length === 0) { 
-          setFilteredSessionIds(null); 
-          setExpandedSession(null); 
-          return; 
-      }
-      
-      // Si on clique sur le même jour, on désactive le filtre
-      if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { 
-          setFilteredSessionIds(null); 
-          setExpandedSession(null); 
-      } else { 
-          // Sinon, on filtre ET on ouvre directement la première séance (Mode Guerrier activé !)
-          setFilteredSessionIds(daySessionIds); 
-          if (daySessionIds.length > 0) {
-              setExpandedSession(daySessionIds[0]);
-          }
-      }
+      if (!daySessionIds || daySessionIds.length === 0) { setFilteredSessionIds(null); return; }
+      if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { setFilteredSessionIds(null); } else { setFilteredSessionIds(daySessionIds); }
   };
 
   const generatePlan = () => {
-    // ... (Logique de génération identique, omise pour brièveté car inchangée)
     const newPlan = [];
     const { durationWeeks: totalWeeks, targetDistance } = userData;
     const adaptationWeeks = Math.ceil(totalWeeks * 0.3);
@@ -1462,63 +1053,151 @@ export default function App() {
       let volumeLabel = isAdaptation ? "Volume bas" : isTaper ? "Récupération" : "Charge haute";
       const isTechWeek = i % 2 !== 0;
 
+      // --- BRANCHE HYROX ---
       if (targetDistance === 'hyrox') {
+          // Logique Hyrox spécifique
           focus = isRaceWeek ? "HYROX RACE" : focus;
-          const totalRunSessions = userData.extraRunSessions !== undefined ? userData.extraRunSessions : 1;
 
-          if (totalRunSessions > 0) {
-             sessions.push({ id: `w${i}-run-eng`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short });
-          }
-          for(let r=1; r < totalRunSessions; r++) {
-               sessions.push({ id: `w${i}-bonus-r${r}`, day: `RUN ENDURANCE ${r}`, category: 'run', type: "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: "Footing souple pour augmenter le volume aérobie.", scienceNote: "Capillarisation.", planningAdvice: "À placer un jour de repos ou en bi-quotidien.", exercises: RUN_PROTOCOLS.steady });
-          }
+          // 1. Run "Moteur"
+          sessions.push({ id: `w${i}-h1`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short });
+
+          // 2. Séance Hyrox Spécifique (Sleds / Wall Balls...)
           const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"];
           const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim];
-          const hyroxCount = userData.hyroxSessionsPerWeek || 3;
           
-          for(let h=0; h < hyroxCount; h++) {
+          for(let h=0; h < userData.hyroxSessionsPerWeek; h++) {
              const currentSplitIndex = (hyroxSessionIndex + h) % 5;
-             sessions.push({ id: `w${i}-hyrox-${h}`, day: `HYROX ${h+1}`, category: 'hyrox', type: splitNames[currentSplitIndex], structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 9, description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, scienceNote: "Endurance de force.", planningAdvice: "Simulez les conditions de course.", exercises: splitExos[currentSplitIndex], tags: ['legs'] });
+             sessions.push({ 
+                 id: `w${i}-h${h}`, 
+                 day: `HYROX ${h+1}`, 
+                 category: 'hyrox', 
+                 type: splitNames[currentSplitIndex], 
+                 structure: 'pyramid', 
+                 intensity: 'high', 
+                 duration: "60-90 min", 
+                 durationMin: 75, 
+                 paceTarget: "N/A", 
+                 paceGap: 0, 
+                 rpe: 9, 
+                 description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, 
+                 scienceNote: "Endurance de force.", 
+                 planningAdvice: "Simulez les conditions de course.", 
+                 exercises: splitExos[currentSplitIndex], 
+                 tags: ['legs'] 
+             });
           }
-          hyroxSessionIndex += hyroxCount; 
-          const extraStrengthCount = userData.extraStrengthSessions || 0;
-          for(let s=0; s < extraStrengthCount; s++) {
-               sessions.push({ id: `w${i}-bonus-s${s}`, day: `BONUS MUSCU ${s+1}`, category: 'strength', type: "Force Max", structure: 'pyramid', intensity: 'high', duration: "60 min", durationMin: 60, paceTarget: "N/A", paceGap: 0, rpe: 8, description: "Renforcement pur pour soutenir la charge Hyrox.", scienceNote: "Recrutement unités motrices.", planningAdvice: "Loin des séances intenses.", exercises: STRENGTH_PROTOCOLS.force.full });
+          hyroxSessionIndex += userData.hyroxSessionsPerWeek; // Incrémenter pour la semaine suivante
+
+          // 2. Ajout Bonus Run
+          for(let r=0; r < userData.extraRunSessions; r++) {
+               sessions.push({ 
+                   id: `w${i}-bonus-r${r}`, 
+                   day: `BONUS RUN ${r+1}`, 
+                   category: 'run', 
+                   type: "Endurance Fondamentale", 
+                   structure: 'steady', 
+                   intensity: 'low', 
+                   duration: "45 min", 
+                   durationMin: 45, 
+                   distance: calcDist(45, paces.valEasy), 
+                   paceTarget: paces.easyRange, 
+                   paceGap: paces.gap, 
+                   rpe: 3, 
+                   description: "Footing souple pour augmenter le volume aérobie.", 
+                   scienceNote: "Capillarisation.", 
+                   planningAdvice: "À placer un jour de repos ou en bi-quotidien.", 
+                   exercises: RUN_PROTOCOLS.steady 
+               });
+          }
+
+          // 3. Ajout Bonus Muscu (Force Pure)
+          for(let s=0; s < userData.extraStrengthSessions; s++) {
+               sessions.push({ 
+                   id: `w${i}-bonus-s${s}`, 
+                   day: `BONUS MUSCU ${s+1}`, 
+                   category: 'strength', 
+                   type: "Force Max", 
+                   structure: 'pyramid', 
+                   intensity: 'high', 
+                   duration: "60 min", 
+                   durationMin: 60, 
+                   paceTarget: "N/A", 
+                   paceGap: 0, 
+                   rpe: 8, 
+                   description: "Renforcement pur pour soutenir la charge Hyrox.", 
+                   scienceNote: "Recrutement unités motrices.", 
+                   planningAdvice: "Loin des séances intenses.", 
+                   exercises: STRENGTH_PROTOCOLS.force.full 
+               });
           }
 
       } else {
+        // --- BRANCHE RUNNING CLASSIQUE (5k, 10k, 21k, 42k) ---
+        
+        // Run 1: Endurance
         sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady });
 
+        // Run 2: Qualité (adapté à la distance)
         if (userData.runDaysPerWeek >= 2) {
             let sessionType = "";
             let sessionExo = [];
-            if (targetDistance === '5k') { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; } 
-            else if (targetDistance === '10k') {
+            
+            if (targetDistance === '5k') {
+                 sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short;
+            } else if (targetDistance === '10k') {
+                 // VARIATION SEMAINE PAR SEMAINE POUR 10K
                  const cycle = i % 4;
                  if (cycle === 1) { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; }
                  else if (cycle === 2) { sessionType = "Seuil Anaérobie"; sessionExo = RUN_PROTOCOLS.threshold; }
                  else if (cycle === 3) { sessionType = "Côtes / Force"; sessionExo = RUN_PROTOCOLS.hills; }
                  else { sessionType = "VMA Longue"; sessionExo = RUN_PROTOCOLS.interval_long; }
-            } else if (targetDistance === '21k') { sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold; } 
-            else { sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; }
+            } else if (targetDistance === '21k') {
+                 sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold;
+            } else { // 42k
+                 // Alternance VMA et Seuil Marathon
+                 sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; 
+                 sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; 
+            }
+            
             sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: sessionType, structure: 'interval', intensity: 'high', duration: "60 min", durationMin: 60, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: `Séance clé pour ${targetDistance}.`, scienceNote: "Développement moteur.", planningAdvice: "Fraîcheur requise.", exercises: sessionExo });
         }
 
+        // Run 3: Sortie Longue (Durée adaptée)
         if (userData.runDaysPerWeek >= 3) {
             let longRunDuration = 60;
             let longRunType = "Sortie Longue";
-            if (targetDistance === '21k') { longRunDuration = 80 + (i * 5); if (longRunDuration > 130) longRunDuration = 90; }
-            if (targetDistance === '42k') { if (i % 3 === 0) { longRunDuration = 90; longRunType = "Sortie Longue (Récup)"; } else { longRunDuration = 100 + (i * 10); if (longRunDuration > 180) longRunDuration = 150; } }
+            
+            if (targetDistance === '21k') {
+                longRunDuration = 80 + (i * 5); // Monte jusqu'à ~1h50
+                if (longRunDuration > 130) longRunDuration = 90; // Tapering
+            }
+            if (targetDistance === '42k') {
+                // Cycle ondulatoire pour éviter la fatigue chronique
+                if (i % 3 === 0) { // Semaine de récupération
+                    longRunDuration = 90; 
+                    longRunType = "Sortie Longue (Récup)";
+                } else {
+                    longRunDuration = 100 + (i * 10); // Monte progressivement
+                    if (longRunDuration > 180) longRunDuration = 150; // Cap à 3h
+                }
+            }
+
+            // Tapering strict pour la fin
             if (isTaper) longRunDuration = longRunDuration * 0.6;
+
             sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable. Hydratation test.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run });
         }
         
+        // --- RENFORCEMENT POUR RUNNERS (Force / Hypertrophie / Street) ---
         const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek;
+        
         for(let s=1; s<=strengthCount; s++) {
             let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = [];
+            
             if (userData.strengthFocus === 'force') {
                 if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } }
                 else { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; } }
+            
             } else if (userData.strengthFocus === 'street_workout') {
                 const splitNames = ["Street Push", "Street Pull", "Street Legs", "Street Skills", "Street Full Body"];
                 const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body];
@@ -1526,7 +1205,9 @@ export default function App() {
                 gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex];
                 if (currentSplitIndex === 2) gymTags = ['legs'];
                 streetSessionIndex++;
+
             } else {
+                // Hypertrophie (CORRIGÉ SELON DEMANDE UTILISATEUR)
                 const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps/Abdos)", "Legs (Jambes)", "Épaules & Bras", "Dos & Pecs"];
                 const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back];
                 const currentSplitIndex = hypertrophySessionIndex % 5;
@@ -1534,10 +1215,13 @@ export default function App() {
                 if (currentSplitIndex === 2) gymTags = ['legs'];
                 hypertrophySessionIndex++;
             }
+
             sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags });
         }
       }
-      const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox');
+
+      // Finalisation semaine
+      const weeklySchedule = getRecommendedSchedule(sessions);
       newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule });
     }
     setPlan(newPlan);
@@ -1607,20 +1291,6 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 mt-6 flex-1 w-full relative z-20 pb-20">
         
-        {/* BOUTON FLOTTANT SOUTENIR (FAB) */}
-        {step === 'result' && (
-            <a 
-              href={DONATION_URL} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="fixed bottom-6 right-6 z-[60] bg-[#FFDD00] text-black p-4 rounded-full shadow-2xl hover:scale-110 transition-transform animate-bounce group flex items-center justify-center border-4 border-white/50"
-              title="Soutenir le projet"
-            >
-              <Coffee size={24} className="group-hover:rotate-12 transition-transform"/>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>
-            </a>
-        )}
-
         {modalExercise && (
             <ExerciseModal 
                 exercise={modalExercise.data} 
@@ -1628,60 +1298,12 @@ export default function App() {
                 category={modalExercise.category} 
                 exerciseIndex={modalExercise.index} 
                 onClose={() => setModalExercise(null)} 
-                onComplete={(uniqueId, isExercise, data) => handleSessionCompleteFromModal(uniqueId, isExercise, data)}
-                savedData={exercisesLog[`${modalExercise.id}-ex-${modalExercise.index}`]} // On passe les données sauvegardées
-            />
-        )}
-
-        {/* MODAL DE FIN DE SÉANCE AVEC EXPORT */}
-        {lastCompletedData && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center relative animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
-                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 animate-bounce">
-                        <Award size={40} />
-                    </div>
-                    <h3 className="text-3xl font-black text-slate-800 mb-2">Séance Terminée !</h3>
-                    <p className="text-slate-500 mb-6">Bravo, vous avez validé une étape clé de votre progression.</p>
-                    
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 grid grid-cols-2 gap-4">
-                        <div className="text-center">
-                            <div className="text-xs font-bold text-slate-400 uppercase">Temps</div>
-                            <div className="text-xl font-black text-slate-800">{formatStopwatch(lastCompletedData.duration)}</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-xs font-bold text-slate-400 uppercase">Calories (Est.)</div>
-                            <div className="text-xl font-black text-slate-800">{Math.floor(lastCompletedData.duration / 60 * 10)}</div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <button 
-                            onClick={() => downloadTCX(lastCompletedData.session, lastCompletedData.duration, lastCompletedData.date, exercisesLog)}
-                            className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition shadow-lg shadow-orange-200 flex items-center justify-center gap-2"
-                        >
-                            <Download size={20}/> Exporter pour Strava (.tcx)
-                        </button>
-                        <button 
-                            onClick={() => setLastCompletedData(null)}
-                            className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition"
-                        >
-                            Fermer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {catalogSessionId && (
-            <ExerciseCatalog 
-                onClose={() => setCatalogSessionId(null)}
-                onSelect={(ex) => handleAddExercise(ex)}
+                onComplete={(uniqueId, isExercise) => handleSessionCompleteFromModal(uniqueId, isExercise)}
             />
         )}
 
         {step === 'input' ? (
           <div className="-mt-16 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 duration-500">
-            {/* ... (Contenu input inchangé) ... */}
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4">
                 <Award className="text-indigo-600"/> Objectif Principal
             </h2>
@@ -1705,34 +1327,15 @@ export default function App() {
                 <label className="text-xs font-bold text-slate-400 uppercase">
                     {userData.targetDistance === 'hyrox' ? "Temps Cible Hyrox" : `Chrono ${userData.targetDistance.toUpperCase()}`}
                 </label>
-                <div className="bg-slate-50 p-2 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition space-y-3">
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => handleTimeChange(-1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
-                        <div className="flex-1 text-center relative">
-                            <div className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 p-2">
-                                {formatGoalTime(userData.goalTime)}
-                            </div>
-                            <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
+                <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition">
+                    <button onClick={() => handleTimeChange(-1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Minus size={20} /></button>
+                    <div className="flex-1 text-center relative">
+                        <div className="w-full bg-transparent text-center font-black text-3xl text-indigo-600 p-2">
+                            {formatGoalTime(userData.goalTime)}
                         </div>
-                        <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
+                        <Target className="absolute top-1/2 -translate-y-1/2 right-2 text-indigo-100 opacity-50 pointer-events-none" size={40} />
                     </div>
-                    
-                    <div className="px-2 pb-1">
-                        <input 
-                            type="range" 
-                            min={timeConstraints.min} 
-                            max={timeConstraints.max} 
-                            step={timeConstraints.step}
-                            value={userData.goalTime}
-                            onChange={(e) => setUserData({...userData, goalTime: parseFloat(e.target.value)})}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                        />
-                        <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-bold uppercase">
-                            <span>{formatGoalTime(timeConstraints.min)}</span>
-                            <span className="text-indigo-400">Glisser pour ajuster</span>
-                            <span>{formatGoalTime(timeConstraints.max)}</span>
-                        </div>
-                    </div>
+                    <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
                 </div>
                 {userData.targetDistance !== 'hyrox' && (
                     <p className="text-xs text-slate-400 text-center mt-2">Allure cible : {formatPace(userData.goalTime / (userData.targetDistance === '21k' ? 21.1 : userData.targetDistance === '42k' ? 42.195 : parseInt(userData.targetDistance)))}/km</p>
@@ -1766,7 +1369,7 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
-                             <label className="text-xs font-bold text-indigo-800 uppercase">Séances Running</label>
+                             <label className="text-xs font-bold text-indigo-800 uppercase">Run Pur (+)</label>
                              <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-yellow-200">
                                  <button onClick={() => setUserData({...userData, extraRunSessions: Math.max(0, userData.extraRunSessions - 1)})} className="p-2 bg-indigo-100 rounded-lg text-indigo-700"><Minus size={14}/></button>
                                  <span className="flex-1 text-center font-bold text-indigo-900">{userData.extraRunSessions}</span>
@@ -1837,7 +1440,7 @@ export default function App() {
              <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-4 flex items-start gap-3 text-xs text-indigo-800 animate-in fade-in">
                 <Move size={16} className="shrink-0 mt-0.5"/>
                 <p>
-                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours. Même chose pour l'ordre des exercices dans une séance.
+                    <strong>Flexibilité :</strong> Vous pouvez réorganiser votre semaine en cliquant sur les flèches <ArrowRightLeft className="inline w-3 h-3"/> pour échanger deux jours.
                 </p>
              </div>
             )}
@@ -1882,7 +1485,7 @@ export default function App() {
                                         const isSwapSource = swapSelection && swapSelection.weekIdx === week.weekNumber && swapSelection.dayIdx === i;
 
                                         return (
-                                            <div key={i} className={`flex items-center justify-between p-2 rounded border transition select-none ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02] ring-1 ring-indigo-300' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'} ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''} ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                                            <div key={i} className={`flex items-center justify-between p-2 rounded border transition select-none ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'} ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''} ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                                                 onClick={() => {
                                                     if (swapSelection) { handleSwapRequest(week.weekNumber, i); }
                                                     else if (hasActivity) { const idsToFilter = day.sessionIds; handleDayClick(idsToFilter); }
@@ -1910,34 +1513,9 @@ export default function App() {
                             const completedCount = session.exercises ? session.exercises.filter((_, i) => completedExercises.has(`${session.id}-ex-${i}`)).length : 0;
                             const isSessionFullyDone = session.exercises && completedCount === session.exercises.length;
 
-                            // Astuce : changer la key quand on filtre force le remount et donc l'animation
-                            const sessionKey = filteredSessionIds ? `${session.id}-filtered` : session.id;
-
                             return (
-                                <div key={sessionKey} className={`rounded-xl border transition-all duration-500 ease-out ${
-                                    filteredSessionIds 
-                                        ? 'animate-in slide-in-from-left-4 fade-in zoom-in-95 duration-500' // Animation directe et visible
-                                        : 'animate-in slide-in-from-bottom-2 fade-in duration-300'
-                                } ${
-                                    isDone 
-                                        ? 'bg-green-50/50 border-green-200 opacity-60' 
-                                        : isExpandedSession 
-                                            ? 'bg-white border-indigo-600 shadow-2xl ring-4 ring-indigo-500/10 scale-[1.02] z-10 relative my-3' 
-                                            : filteredSessionIds 
-                                                ? 'bg-white border-indigo-200 shadow-lg ring-1 ring-indigo-100' // Style "Pop" quand filtré
-                                                : 'bg-white border-slate-100 hover:border-indigo-300 shadow-sm hover:shadow-md'
-                                }`}>
-                                
-                                {/* BANDEAU DE MOTIVATION (Seulement si étendu et pas fini) */}
-                                {isExpandedSession && !isDone && (
-                                    <div className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest py-1.5 flex items-center justify-center gap-2 rounded-t-lg animate-in slide-in-from-top-1 fade-in duration-300">
-                                        <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
-                                        GO ! MODE GUERRIER ACTIVÉ
-                                        <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
-                                    </div>
-                                )}
-
-                                <div onClick={() => { if(session.exercises) { setExpandedSession(isExpandedSession ? null : session.id); } else { toggleSession(session.id); } }} className={`cursor-pointer relative ${isExpandedSession && !isDone ? 'p-4' : 'p-3'}`}>
+                                <div key={session.id} className={`rounded-lg border transition animate-in slide-in-from-bottom-2 ${isDone ? 'bg-green-50 border-green-200 opacity-100' : 'bg-white border-slate-100 hover:border-indigo-200 shadow-sm'}`}>
+                                <div onClick={() => { if(session.exercises) { setExpandedSession(isExpandedSession ? null : session.id); } else { toggleSession(session.id); } }} className="p-3 cursor-pointer relative">
                                     {isDone && (
                                         <button onClick={(e) => { e.stopPropagation(); unvalidateSession(session.id); }} className="absolute top-2 right-2 text-green-600 hover:text-green-800 bg-white p-1 rounded-full shadow-sm z-20" title="Annuler la validation"><Undo2 size={14} /></button>
                                     )}
@@ -1961,33 +1539,13 @@ export default function App() {
                                 </div>
                                 {isExpandedSession && session.exercises && !isDone && (
                                     <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
-                                        
-                                        {/* SECTION CHRONOMÈTRE */}
-                                        {activeTimerSessionId === session.id ? (
-                                            <LiveSessionTimer 
-                                                timerRef={currentTimerRef}
-                                                onFinish={(duration) => handleTimerFinish(session.id, duration)} 
-                                            />
-                                        ) : (
-                                            <button onClick={() => setActiveTimerSessionId(session.id)} className="w-full mb-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl flex items-center justify-center gap-2 font-bold text-sm shadow-md transition-all">
-                                                <Play size={16} className="fill-white"/> Démarrer le Chrono
-                                            </button>
-                                        )}
-
                                         <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
                                         <div className="space-y-2">
                                             {session.exercises.map((exo, idx) => {
                                                 const uniqueExerciseId = `${session.id}-ex-${idx}`;
                                                 const isChecked = completedExercises.has(uniqueExerciseId);
-                                                const isSwapSelected = exerciseSwapSelection && exerciseSwapSelection.sessionId === session.id && exerciseSwapSelection.exIdx === idx;
                                                 return (
-                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : isSwapSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 animate-pulse' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} ${exerciseSwapSelection && !isSwapSelected ? 'cursor-pointer hover:bg-slate-100' : ''}`} onClick={() => { if (exerciseSwapSelection) handleExerciseSwapRequest(week.weekNumber, session.id, idx); }}>
-                                                        <div onClick={(e) => { e.stopPropagation(); handleExerciseSwapRequest(week.weekNumber, session.id, idx); }} className={`p-1 rounded-md transition-colors cursor-pointer ${isSwapSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`} title="Déplacer cet exercice">
-                                                            <ArrowRightLeft size={14} />
-                                                        </div>
-                                                        <div onClick={(e) => { e.stopPropagation(); handleDeleteExercise(week.weekNumber, session.id, idx); }} className="p-1 rounded-md transition-colors cursor-pointer bg-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50" title="Supprimer cet exercice">
-                                                            <Trash2 size={14} />
-                                                        </div>
+                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'}`}>
                                                         {session.category !== 'run' && (
                                                         <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
                                                             {isChecked ? <CheckSquare size={20} className="text-green-500" /> : <Square size={20} className="text-slate-300 hover:text-indigo-400" />}
@@ -2007,29 +1565,9 @@ export default function App() {
                                                 );
                                             })}
                                         </div>
-                                        {/* Bouton Ajouter Exercice */}
-                                        <button onClick={() => setCatalogSessionId(session.id)} className="w-full mt-2 py-2 border border-dashed border-indigo-200 text-indigo-500 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition flex items-center justify-center gap-1">
-                                            <Plus size={14}/> Ajouter un exercice
-                                        </button>
-
                                         {/* Bouton global pour valider la séance entière */}
                                         { (session.category === 'run' || isSessionFullyDone) && (
-                                            <button 
-                                                onClick={(e) => { 
-                                                    e.stopPropagation();
-                                                    // SI CHRONO ACTIF : On arrête le chrono et on récupère le temps exact
-                                                    if (activeTimerSessionId === session.id) {
-                                                        handleTimerFinish(session.id, currentTimerRef.current);
-                                                    } else {
-                                                        // SI PAS DE CHRONO : On valide manuellement avec un temps théorique pour afficher quand même la victoire
-                                                        const theoreticalTime = (typeof session.durationMin === 'number' ? session.durationMin : 45) * 60;
-                                                        handleTimerFinish(session.id, theoreticalTime);
-                                                    }
-                                                }} 
-                                                className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1 animate-in fade-in slide-in-from-bottom-2 hover:bg-green-600 transition"
-                                            >
-                                                <CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}
-                                            </button>
+                                            <button onClick={() => toggleSession(session.id)} className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1 animate-in fade-in slide-in-from-bottom-2"><CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}</button>
                                         )}
                                     </div>
                                 )}
@@ -2081,7 +1619,35 @@ export default function App() {
                      <div><h4 className="font-bold text-sm">Entraînement Polarisé</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Votre plan suit la distribution des intensités de <strong>Stephen Seiler (2010)</strong>. 80% du volume est effectué à basse intensité (Zone 1/2) pour maximiser la densité mitochondriale sans fatigue excessive.</p></div>
                    </div>
                  </div>
-                 {/* ... autres cartes scientifiques ... */}
+                 <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3"><div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><TrendingUp size={18}/></div>
+                     <div><h4 className="font-bold text-sm">RPE (Ressenti)</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Nous utilisons l'échelle <strong>Borg CR-10</strong> modifiée par Foster pour quantifier la charge interne. C'est souvent plus fiable que la fréquence cardiaque seule.</p></div>
+                   </div>
+                 </div>
+                 {userData.strengthDaysPerWeek > 0 && (
+                   <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                    <div className="flex items-start gap-3"><div className="bg-amber-500/20 p-2 rounded-lg text-amber-400"><Dumbbell size={18}/></div>
+                      <div><h4 className="font-bold text-sm">Effet d'Interférence</h4><p className="text-xs text-slate-300 mt-1 leading-relaxed">Pour éviter que la muscu ne nuise au run, les séances "Jambes" sont placées de manière stratégique (éloignées des séances VMA) selon <strong>Murach & Bagley (2016)</strong>.</p></div>
+                    </div>
+                  </div>
+                 )}
+                 <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3"><div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Target size={18}/></div>
+                     <div><h4 className="font-bold text-sm">Modèle de Banister</h4><BanisterChart duration={userData.durationWeeks} /><p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Modélisation théorique de la performance (Forme = Fitness - Fatigue). Notez le pic de forme prévu à la fin grâce à l'affûtage.</p></div>
+                   </div>
+                 </div>
+                  <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                   <div className="flex items-start gap-3"><div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><BarChart3 size={18}/></div>
+                     <div><h4 className="font-bold text-sm">Charge TRIMP (Training Impulse)</h4><TrimpChart plannedData={stats?.weeklyVolume || []} realizedData={stats?.realizedWeeklyVolume || []} /><p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Quantification de la charge interne hebdomadaire pour assurer une surcharge progressive sans blessure.</p></div>
+                   </div>
+                 </div>
+                 {userData.strengthDaysPerWeek > 0 && (
+                     <div className="bg-white/10 backdrop-blur border border-white/10 p-4 rounded-xl">
+                       <h4 className="font-bold text-sm mb-3">Mécanismes Moléculaires (Interactif)</h4>
+                       <InteractiveInterference />
+                       <p className="text-[10px] text-slate-300 mt-2 leading-relaxed italic">Testez l'impact de l'espacement des séances sur vos gains musculaires et cardio.</p>
+                     </div>
+                 )}
                </div>
             </div>
           </div>
@@ -2090,20 +1656,7 @@ export default function App() {
 
       {/* FOOTER SIGNATURE */}
       {step === 'result' && (
-        <footer className="py-8 text-center border-t border-slate-200 mt-12 bg-white/50 backdrop-blur-sm flex flex-col items-center">
-            
-            {/* BOUTON DONATION ANIMÉ */}
-            <a 
-              href={DONATION_URL} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group relative inline-flex items-center gap-2 bg-[#FFDD00] text-[#000000] px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-wide shadow-xl hover:scale-105 transition-transform mb-6 animate-bounce"
-            >
-              <Coffee size={18} className="group-hover:rotate-12 transition-transform"/>
-              <span>Soutenir le projet</span>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>
-            </a>
-
+        <footer className="py-8 text-center border-t border-slate-200 mt-12 bg-white/50 backdrop-blur-sm">
             <p className="text-slate-500 font-medium text-sm">Créé par <span className="bg-gradient-to-r from-indigo-600 to-rose-500 bg-clip-text text-transparent font-black">Charles Viennot</span></p>
             <p className="text-slate-400 text-xs mt-1 uppercase tracking-widest flex items-center justify-center gap-2"><GraduationCap size={12} /> Étudiant en Ingénierie du Sport</p>
             <button onClick={resetPlan} className="mt-4 text-[10px] text-slate-300 hover:text-rose-400 flex items-center justify-center gap-1 w-full transition-colors"><RotateCcw size={10}/> Réinitialiser les données</button>
