@@ -1893,7 +1893,20 @@ export default function App() {
 
       {/* FOOTER SIGNATURE */}
       {step === 'result' && (
-        <footer className="py-8 text-center border-t border-slate-200 mt-12 bg-white/50 backdrop-blur-sm">
+        <footer className="py-8 text-center border-t border-slate-200 mt-12 bg-white/50 backdrop-blur-sm flex flex-col items-center">
+            
+            {/* BOUTON DONATION ANIMÉ */}
+            <a 
+              href={DONATION_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group relative inline-flex items-center gap-2 bg-[#FFDD00] text-[#000000] px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-wide shadow-xl hover:scale-105 transition-transform mb-6 animate-bounce"
+            >
+              <Coffee size={18} className="group-hover:rotate-12 transition-transform"/>
+              <span>Soutenir le projet</span>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>
+            </a>
+
             <p className="text-slate-500 font-medium text-sm">Créé par <span className="bg-gradient-to-r from-indigo-600 to-rose-500 bg-clip-text text-transparent font-black">Charles Viennot</span></p>
             <p className="text-slate-400 text-xs mt-1 uppercase tracking-widest flex items-center justify-center gap-2"><GraduationCap size={12} /> Étudiant en Ingénierie du Sport</p>
             <button onClick={resetPlan} className="mt-4 text-[10px] text-slate-300 hover:text-rose-400 flex items-center justify-center gap-1 w-full transition-colors"><RotateCcw size={10}/> Réinitialiser les données</button>
