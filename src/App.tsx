@@ -1607,6 +1607,20 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 mt-6 flex-1 w-full relative z-20 pb-20">
         
+        {/* BOUTON FLOTTANT SOUTENIR (FAB) */}
+        {step === 'result' && (
+            <a 
+              href={DONATION_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="fixed bottom-6 right-6 z-[60] bg-[#FFDD00] text-black p-4 rounded-full shadow-2xl hover:scale-110 transition-transform animate-bounce group flex items-center justify-center border-4 border-white/50"
+              title="Soutenir le projet"
+            >
+              <Coffee size={24} className="group-hover:rotate-12 transition-transform"/>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>
+            </a>
+        )}
+
         {modalExercise && (
             <ExerciseModal 
                 exercise={modalExercise.data} 
