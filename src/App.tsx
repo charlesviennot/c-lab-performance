@@ -70,29 +70,49 @@ const formatStopwatch = (seconds) => {
 const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
   const startTime = date.toISOString();
   const endTime = new Date(date.getTime() + durationSeconds * 1000).toISOString();
-  const calories = Math.floor((durationSeconds / 60) * 10); 
+  
+  // Estimation calorique : Course ~12kcal/min, Muscu ~8kcal/min
+  const kcalPerMin = session.category === 'run' ? 12 : 8;
+  const calories = Math.floor((durationSeconds / 60) * kcalPerMin); 
+  
+  // Mapping categories : Strava utilise Running ou Other (pour Muscu/Hyrox)
+  // 'Running' est standard dans TCX v2. Pour la muscu, on utilise 'Other' qui apparait souvent comme 'Activité' ou 'Entraînement'
   let sport = 'Other';
   if (session.category === 'run') sport = 'Running';
+  
   const distanceMeters = session.distance ? parseFloat(session.distance) * 1000 : 0;
 
-  let notesContent = `${session.type}\n${session.description}\n---\n`;
+  // Construction des notes détaillées
+  let notesContent = `C-Lab Performance: ${session.type}\n${session.description}\n\n--- DÉTAIL SÉANCE ---\n`;
+  
   if (session.exercises) {
       session.exercises.forEach((ex, idx) => {
           const uniqueId = `${session.id}-ex-${idx}`;
           const log = exercisesLog[uniqueId];
-          notesContent += `• ${ex.name} (${ex.sets} x ${ex.reps})`;
-          if (log && log.weights && log.weights.some(w => w)) {
-              const weightsStr = log.weights.filter(w => w && w !== '').map(w => `${w}kg`).join(', ');
-              if (weightsStr) notesContent += ` : ${weightsStr}`;
+          
+          // Récupération des poids si existants
+          let weightsStr = "";
+          if (log && log.weights && log.weights.some(w => w && w !== "")) {
+              const validWeights = log.weights.filter(w => w && w !== "").map(w => `${w}kg`);
+              if (validWeights.length > 0) {
+                  weightsStr = ` | Charges: ${validWeights.join(", ")}`;
+              }
           }
-          notesContent += '\n';
+          
+          notesContent += `✅ ${ex.name} (${ex.sets} x ${ex.reps})${weightsStr}\n`;
       });
   }
-  notesContent += `\nRPE: ${session.rpe}/10. Généré par C-Lab Performance.`;
+  
+  notesContent += `\nIntensité Ressentie (RPE): ${session.rpe}/10\nDurée effective: ${formatStopwatch(durationSeconds)}`;
+
+  // Échappement des caractères spéciaux XML
   const safeNotes = notesContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const tcxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<TrainingCenterDatabase xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd" xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<TrainingCenterDatabase
+  xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"
+  xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Activities>
     <Activity Sport="${sport}">
       <Id>${startTime}</Id>
@@ -103,12 +123,28 @@ const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
         <Intensity>Active</Intensity>
         <TriggerMethod>Manual</TriggerMethod>
         <Track>
-          <Trackpoint><Time>${startTime}</Time><DistanceMeters>0</DistanceMeters></Trackpoint>
-          <Trackpoint><Time>${endTime}</Time><DistanceMeters>${distanceMeters}</DistanceMeters></Trackpoint>
+          <Trackpoint>
+            <Time>${startTime}</Time>
+            <DistanceMeters>0</DistanceMeters>
+          </Trackpoint>
+          <Trackpoint>
+            <Time>${endTime}</Time>
+            <DistanceMeters>${distanceMeters}</DistanceMeters>
+          </Trackpoint>
         </Track>
       </Lap>
       <Notes>${safeNotes}</Notes>
-      <Creator xsi:type="Device_t"><Name>C-Lab Performance</Name><UnitId>0</UnitId><ProductID>1</ProductID><Version><VersionMajor>1</VersionMajor><VersionMinor>0</VersionMinor><BuildMajor>0</BuildMajor><BuildMinor>0</BuildMinor></Version></Creator>
+      <Creator xsi:type="Device_t">
+        <Name>C-Lab Performance</Name>
+        <UnitId>0</UnitId>
+        <ProductID>1</ProductID>
+        <Version>
+          <VersionMajor>1</VersionMajor>
+          <VersionMinor>0</VersionMinor>
+          <BuildMajor>0</BuildMajor>
+          <BuildMinor>0</BuildMinor>
+        </Version>
+      </Creator>
     </Activity>
   </Activities>
 </TrainingCenterDatabase>`;
@@ -120,6 +156,7 @@ const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
   const dateStr = new Date().toISOString().split('T')[0];
   const safeType = session.type.replace(/\s+/g, '_').toLowerCase();
   link.download = `clab_${dateStr}_${safeType}.tcx`;
+  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -270,15 +307,15 @@ const STRENGTH_PROTOCOLS = {
       { name: "Mollets Debout", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Mollets", imageKeyword: "calves", instructions: "Extension maximale sur la pointe des pieds. Pause 1sec en haut, 1sec en bas.", imageUrl: "https://i.postimg.cc/brS9vJL1/mollet_debout.png" }
     ],
     shoulders_arms: [
-      { name: "Développé Militaire", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Base Épaules", imageKeyword: "military press", instructions: "Barre ou haltères. Dos droit, abdos serrés. Poussez la charge au-dessus de la tête sans cambrer.", imageUrl: "https://i.postimg.cc/T1vJpxSR/dev_militaire.png" },
-      { name: "Élévations Latérales Haltères", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Deltoïde Latéral", imageKeyword: "lateral raise", instructions: "Coude légèrement fléchi. Montez les coudes, pas les mains. Contrôlez la descente.", imageUrl: "https://i.postimg.cc/Xq6kpWh7/elevation_late_rale.png" },
+      { name: "Développé Militaire", sets: 4, reps: "10-12", rest: "90s", rpe: 8, note: "Base Épaules", imageKeyword: "military press", instructions: "Barre ou haltères. Dos droit, abdos serrés. Poussez la charge au-dessus de la tête sans cambrer.", imageUrl: "" },
+      { name: "Élévations Latérales Haltères", sets: 4, reps: "15-20", rest: "45s", rpe: 9, note: "Deltoïde Latéral", imageKeyword: "lateral raise", instructions: "Coude légèrement fléchi. Montez les coudes, pas les mains. Contrôlez la descente.", imageUrl: "" },
       { name: "Curl Biceps Incliné", sets: 3, reps: "12", rest: "60s", rpe: 9, note: "Biceps Chef Long", imageKeyword: "incline curl", instructions: "Banc à 45°. Laissez les bras pendre derrière le corps pour étirer le biceps. Gardez les coudes fixes.", imageUrl: "" },
-      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Chef Latéral Triceps", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "https://i.postimg.cc/prQYj7bn/Extensions_Triceps_Poulie.png" },
+      { name: "Extension Triceps Corde", sets: 4, reps: "15", rest: "45s", rpe: 9, note: "Chef Latéral Triceps", imageKeyword: "tricep pushdown", instructions: "Poulie haute. Écartez la corde en bas du mouvement. Gardez les coudes collés aux côtes.", imageUrl: "" },
       { name: "Curl Marteau", sets: 3, reps: "12", rest: "60s", rpe: 8, note: "Brachial", imageKeyword: "hammer curl", instructions: "Prise marteau (neutre). Cible l'épaisseur du bras et l'avant-bras.", imageUrl: "https://i.postimg.cc/QdtvJg6n/Hammer_curl.png" }
     ],
     chest_back: [
-      { name: "Développé Incliné", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Haut Pecs", imageKeyword: "incline bench", instructions: "Banc à 30°. Cible le haut des pectoraux. Touchez la poitrine, poussez.", imageUrl: "https://i.postimg.cc/rm18gm1R/developpe_couche_incline.png" },
-      { name: "Tirage Horizontal", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Dos", imageKeyword: "seated row", instructions: "Dos droit. Tirez la poignée au bas ventre. Sortez la poitrine.", imageUrl: "https://i.postimg.cc/ZqL7cz9P/Tirage_Horizontal.png" },
+      { name: "Développé Incliné", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Haut Pecs", imageKeyword: "incline bench", instructions: "Banc à 30°. Cible le haut des pectoraux. Touchez la poitrine, poussez.", imageUrl: "" },
+      { name: "Tirage Horizontal", sets: 4, reps: "10", rest: "90s", rpe: 8, note: "Dos", imageKeyword: "seated row", instructions: "Dos droit. Tirez la poignée au bas ventre. Sortez la poitrine.", imageUrl: "" },
       { name: "Écarté Couché", sets: 3, reps: "15", rest: "60s", rpe: 9, note: "Isolation Pecs", imageKeyword: "flyes", instructions: "Ouvrez la cage thoracique. Gardez une légère flexion des coudes.", imageUrl: "" },
       { name: "Pull-over", sets: 3, reps: "15", rest: "60s", rpe: 8, note: "Dos/Pecs", imageKeyword: "pullover", instructions: "Allongé en travers du banc. Descendez l'haltère derrière la tête bras tendus.", imageUrl: "" },
       { name: "Shrugs", sets: 4, reps: "15", rest: "45s", rpe: 8, note: "Trapèzes", imageKeyword: "shrugs", instructions: "Haussement d'épaules. Ne roulez pas les épaules, juste haut/bas.", imageUrl: "" }
@@ -350,7 +387,8 @@ const STRENGTH_PROTOCOLS = {
   }
 };
 
-// --- 3. COMPOSANTS ENFANTS ---
+// --- COMPOSANTS ENFANTS (ExerciseCatalog, ExerciseModal, etc...) ---
+// (Note: J'inclus les composants modifiés ou nécessaires, les autres restent identiques)
 
 const RpeBadge = ({ level }) => {
     let color = "bg-emerald-100 text-emerald-700";
@@ -458,174 +496,14 @@ const LiveSessionTimer = ({ onFinish, timerRef }) => {
     );
 };
 
-const InteractiveInterference = () => {
-    const [scenario, setScenario] = useState('far'); 
-    return (
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
-                <button onClick={() => setScenario('close')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'close' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Séances Rapprochées (&lt;6h)</button>
-                <button onClick={() => setScenario('far')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'far' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Séances Espacées (&gt;24h)</button>
-            </div>
-            <div className="relative h-48 bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center p-4">
-                <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '10px 10px'}}></div>
-                <div className="relative z-10 w-full flex justify-between items-center">
-                    <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? 'translate-x-8 scale-110' : 'translate-x-0'}`}>
-                        <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/50 mb-2 animate-pulse"><Zap size={20} /></div>
-                        <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Cardio (AMPk)</div>
-                        {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>}
-                    </div>
-                    {scenario === 'close' && (<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300"><div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-rose-500/50"><X size={24} className="text-white"/></div><div className="bg-rose-600 text-white text-[9px] font-bold px-2 py-1 rounded mt-2">INTERFÉRENCE</div></div>)}
-                    <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? '-translate-x-8 scale-90 opacity-50' : 'translate-x-0'}`}>
-                        <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/50 mb-2 animate-pulse"><Dumbbell size={20} /></div>
-                        <div className="text-[10px] font-bold text-rose-300 uppercase tracking-widest">Muscle (mTOR)</div>
-                         {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>}
-                    </div>
-                </div>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{scenario === 'close' ? "⚠️ Le signal 'Cardio' bloque la construction musculaire. Vos gains en force sont compromis." : "✅ Les deux signaux ont le temps de s'exprimer. Vous progressez en endurance ET en muscle."}</p>
-        </div>
-    );
-};
-
-const StatCard = ({ label, value, unit, icon: Icon, color }) => (
-    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-        <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p><div className="text-2xl font-black text-slate-800 flex items-baseline gap-1">{value} <span className="text-xs font-medium text-slate-400">{unit}</span></div></div>
-        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}><Icon size={20} /></div>
-    </div>
-);
-
-const PolarizationChart = ({ low, high }) => {
-    const total = low + high || 1;
-    const lowPercent = Math.round((low / total) * 100);
-    const highPercent = Math.round((high / total) * 100);
-    return (
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex justify-between items-end mb-4"><h4 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={18} className="text-indigo-500"/> Polarisation (Prévisionnelle)</h4><span className="text-xs font-medium text-slate-400">Cible: 80/20</span></div>
-            <div className="flex h-6 w-full rounded-full overflow-hidden bg-slate-100 relative">
-                <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000 relative group" style={{ width: `${lowPercent}%` }}><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Endurance</span></div>
-                <div className="h-full bg-gradient-to-r from-rose-500 to-rose-600 transition-all duration-1000 relative group" style={{ width: `${highPercent}%` }}><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Intensité</span></div>
-                <div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: '80%'}}></div>
-                <div className="absolute -bottom-1 left-[80%] -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-slate-800"></div>
-            </div>
-            <div className="flex justify-between mt-2 text-xs font-bold"><div className="text-emerald-600">{lowPercent}% <span className="text-[10px] font-normal text-slate-400">Volume</span></div><div className="text-rose-600">{highPercent}% <span className="text-[10px] font-normal text-slate-400">Intensité</span></div></div>
-        </div>
-    );
-};
-
-const WeeklyVolumeChart = ({ plannedData, realizedData }) => {
-  const [selectedWeek, setSelectedWeek] = useState(null);
-  if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">Générez votre plan pour voir les données.</div>;
-  const max = Math.max(...plannedData, 1);
-  return (
-    <div className="space-y-4">
-        <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2"><div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Prévu</div><div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-sm"></div> Réalisé</div></div>
-        <div className="flex items-end justify-between h-32 gap-1 mt-2 px-2 relative">
-            <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-20 z-0"><div className="w-full h-px bg-slate-400 border-dashed border-t"></div><div className="w-full h-px bg-slate-400 border-dashed border-t"></div><div className="w-full h-px bg-slate-400 border-dashed border-t"></div></div>
-            {plannedData.map((val, i) => {
-                const planVal = val || 0;
-                const realVal = realizedData[i] || 0;
-                return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedWeek(i === selectedWeek ? null : i)}>
-                <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
-                    <div className={`w-full absolute bottom-0 border-2 border-dashed border-slate-300 bg-slate-50 transition-all duration-500 rounded-t-sm z-0 ${planVal === 0 ? 'h-1' : ''}`} style={{ height: `${planVal > 0 ? (planVal / max) * 100 : 1}%` }}></div>
-                    <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-50'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div>
-                </div>
-                <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
-                </div>
-            )})}
-        </div>
-        {selectedWeek !== null && (
-             <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-800 animate-in slide-in-from-top-2 shadow-sm">
-                 <div className="flex justify-between items-center mb-1"><span className="font-bold flex items-center gap-1"><Clock size={12}/> Semaine {selectedWeek + 1}</span><span className="bg-white px-2 py-0.5 rounded shadow-sm text-[10px] font-black border border-indigo-100">{realizedData[selectedWeek] || 0} / {plannedData[selectedWeek] || 0} min</span></div>
-                 <div className="text-slate-600 italic">{(realizedData[selectedWeek] || 0) >= (plannedData[selectedWeek] || 1) ? "🎉 Objectif de volume atteint ! Bravo." : "L'objectif est la barre grise. Continuez vos efforts !"}</div>
-             </div>
-        )}
-    </div>
-  );
-};
-
-const BanisterChart = ({ duration }) => {
-    if (!duration) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>;
-    const weeks = Array.from({length: duration + 2}, (_, i) => i); 
-    const data = weeks.map(w => {
-        const ramp = w / duration; 
-        const fitness = 20 + (ramp * 60); 
-        const fatigue = w >= duration ? 15 : 10 + (ramp * 70) + (Math.sin(w)*10); 
-        const form = fitness - fatigue + 30; 
-        return { w, fitness, fatigue, form };
-    });
-    return (
-        <div className="w-full h-48 flex items-end gap-1 mt-6 relative bg-white/50 rounded-xl p-2 border border-slate-100 overflow-hidden">
-             <div className="absolute inset-0 flex flex-col justify-between p-4 opacity-10 pointer-events-none"><div className="w-full h-px bg-slate-900"></div><div className="w-full h-px bg-slate-900"></div><div className="w-full h-px bg-slate-900"></div></div>
-             {data.map((d, i) => (
-                 <div key={i} className="flex-1 flex flex-col justify-end h-full relative group">
-                     <div className="w-2 h-2 bg-green-500 rounded-full absolute left-1/2 -translate-x-1/2 transition-all duration-500 z-20 shadow-sm shadow-green-200" style={{ bottom: `${Math.min(d.form, 95)}%` }}></div>
-                     <div className="w-1 bg-indigo-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 rounded-t-full" style={{ height: `${Math.min(d.fitness, 95)}%` }}></div>
-                      <div className="w-1 bg-rose-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 -translate-x-[2px] rounded-t-full" style={{ height: `${Math.min(d.fatigue, 95)}%` }}></div>
-                 </div>
-             ))}
-             <div className="absolute top-2 left-2 flex flex-wrap gap-3 text-[9px] font-bold bg-white/80 p-1 rounded backdrop-blur-sm z-30 border border-slate-100 shadow-sm">
-                 <span className="text-green-600 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Forme</span>
-                 <span className="text-indigo-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-indigo-300"></div> Fitness</span>
-                 <span className="text-rose-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-rose-300"></div> Fatigue</span>
-             </div>
-        </div>
-    );
-};
-
-const TrimpChart = ({ plannedData, realizedData }) => {
-    const [selectedPoint, setSelectedPoint] = useState(null);
-    if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>;
-    const trimpData = plannedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); });
-    const realizedTrimpData = realizedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); });
-    const maxTrimp = Math.max(...trimpData, 1);
-    return (
-        <div className="space-y-4">
-             <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2"><div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Cible</div><div className="flex items-center gap-1"><div className="w-2 h-2 bg-purple-500 rounded-sm"></div> Fait</div></div>
-            <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative">
-                <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10"><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div></div>
-                {trimpData.map((trimp, i) => {
-                     const realizedTrimp = realizedTrimpData[i] || 0;
-                     return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedPoint(i === selectedPoint ? null : i)}>
-                        <div className="w-full relative flex items-end justify-center h-full rounded-t-sm">
-                            <div className="w-full absolute bottom-0 bg-slate-100 border-2 border-dashed border-slate-300 opacity-60 rounded-t-sm z-0" style={{ height: `${(trimp / maxTrimp) * 80 + 10}%` }}></div>
-                            <div className={`w-full absolute bottom-0 transition-all duration-1000 z-10 rounded-t-sm ${selectedPoint === i ? 'bg-purple-600' : 'bg-gradient-to-t from-purple-300 to-purple-500'}`} style={{ height: `${(realizedTrimp / maxTrimp) * 80 + 10}%` }}></div>
-                        </div>
-                        <span className={`text-[9px] font-mono z-20 ${selectedPoint === i ? 'text-purple-600 font-bold scale-125' : 'text-slate-400'}`}>S{i + 1}</span>
-                    </div>
-                )})}
-            </div>
-            {selectedPoint !== null && (
-                 <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-xs text-purple-800 animate-in slide-in-from-top-2 flex items-start gap-2 shadow-sm">
-                     <Flame size={16} className="shrink-0 mt-0.5 text-purple-600"/>
-                     <div>
-                        <span className="font-bold block mb-1">Charge Semaine {selectedPoint + 1}</span>
-                        <div className="flex gap-4 mb-1 text-[10px]"><span className="text-slate-500">Prévu: {trimpData[selectedPoint]}</span><span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint] || 0}</span></div>
-                        <div className="text-slate-600 italic">{realizedTrimpData[selectedPoint] > trimpData[selectedPoint] ? "Attention, charge plus élevée que prévu." : "Charge maîtrisée."}</div>
-                     </div>
-                 </div>
-            )}
-        </div>
-    );
-};
-
-const InstallGuide = ({ onClose }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative animate-in zoom-in-95 duration-300">
-            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"><X size={24}/></button>
-            <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600"><Smartphone size={32} /></div>
-            <h3 className="text-2xl font-black text-slate-800 mb-2">Installer l'App 📱</h3>
-            <p className="text-sm text-slate-500 mb-6 leading-relaxed">Pour une meilleure expérience, ajoutez C-Lab Performance à votre écran d'accueil. C'est gratuit et sans téléchargement !</p>
-            <div className="space-y-4 text-left bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">1</span><span className="text-sm text-slate-700">Appuyez sur le bouton <strong>Partager</strong> <Share size={14} className="inline ml-1"/> dans Safari.</span></div>
-                <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">2</span><span className="text-sm text-slate-700">Faites défiler vers le bas.</span></div>
-                <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">3</span><span className="text-sm text-slate-700">Sélectionnez <strong>"Sur l'écran d'accueil"</strong>.</span></div>
-            </div>
-            <button onClick={onClose} className="mt-6 w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition">C'est compris !</button>
-        </div>
-    </div>
-);
+// ... (InteractiveInterference, StatCard, PolarizationChart, WeeklyVolumeChart, BanisterChart, TrimpChart, InstallGuide COMPLETS)
+const InteractiveInterference = () => { const [scenario, setScenario] = useState('far'); return ( <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4"> <div className="flex gap-2 p-1 bg-slate-100 rounded-lg"> <button onClick={() => setScenario('close')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'close' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Séances Rapprochées (&lt;6h)</button> <button onClick={() => setScenario('far')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${scenario === 'far' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Séances Espacées (&gt;24h)</button> </div> <div className="relative h-48 bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center p-4"> <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '10px 10px'}}></div> <div className="relative z-10 w-full flex justify-between items-center"> <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? 'translate-x-8 scale-110' : 'translate-x-0'}`}> <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/50 mb-2 animate-pulse"><Zap size={20} /></div> <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Cardio (AMPk)</div> {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>} </div> {scenario === 'close' && (<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300"><div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-rose-500/50"><X size={24} className="text-white"/></div><div className="bg-rose-600 text-white text-[9px] font-bold px-2 py-1 rounded mt-2">INTERFÉRENCE</div></div>)} <div className={`flex flex-col items-center transition-all duration-700 ${scenario === 'close' ? '-translate-x-8 scale-90 opacity-50' : 'translate-x-0'}`}> <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/50 mb-2 animate-pulse"><Dumbbell size={20} /></div> <div className="text-[10px] font-bold text-rose-300 uppercase tracking-widest">Muscle (mTOR)</div> {scenario === 'far' && <div className="text-[9px] text-green-400 mt-1 animate-in fade-in slide-in-from-bottom-2">Active ✅</div>} </div> </div> </div> <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{scenario === 'close' ? "⚠️ Le signal 'Cardio' bloque la construction musculaire. Vos gains en force sont compromis." : "✅ Les deux signaux ont le temps de s'exprimer. Vous progressez en endurance ET en muscle."}</p> </div> ); };
+const StatCard = ({ label, value, unit, icon: Icon, color }) => ( <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all"> <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p><div className="text-2xl font-black text-slate-800 flex items-baseline gap-1">{value} <span className="text-xs font-medium text-slate-400">{unit}</span></div></div> <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}><Icon size={20} /></div> </div> );
+const PolarizationChart = ({ low, high }) => { const total = low + high || 1; const lowPercent = Math.round((low / total) * 100); const highPercent = Math.round((high / total) * 100); return ( <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm"> <div className="flex justify-between items-end mb-4"><h4 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={18} className="text-indigo-500"/> Polarisation (Prévisionnelle)</h4><span className="text-xs font-medium text-slate-400">Cible: 80/20</span></div> <div className="flex h-6 w-full rounded-full overflow-hidden bg-slate-100 relative"> <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000 relative group" style={{ width: `${lowPercent}%` }}><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Endurance</span></div> <div className="h-full bg-gradient-to-r from-rose-500 to-rose-600 transition-all duration-1000 relative group" style={{ width: `${highPercent}%` }}><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">Intensité</span></div> <div className="absolute top-0 bottom-0 w-0.5 bg-white z-10" style={{left: '80%'}}></div> <div className="absolute -bottom-1 left-[80%] -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-slate-800"></div> </div> <div className="flex justify-between mt-2 text-xs font-bold"><div className="text-emerald-600">{lowPercent}% <span className="text-[10px] font-normal text-slate-400">Volume</span></div><div className="text-rose-600">{highPercent}% <span className="text-[10px] font-normal text-slate-400">Intensité</span></div></div> </div> ); };
+const WeeklyVolumeChart = ({ plannedData, realizedData }) => { const [selectedWeek, setSelectedWeek] = useState(null); if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">Générez votre plan pour voir les données.</div>; const max = Math.max(...plannedData, 1); return ( <div className="space-y-4"> <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2"><div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Prévu</div><div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-sm"></div> Réalisé</div></div> <div className="flex items-end justify-between h-32 gap-1 mt-2 px-2 relative"> <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-20 z-0"><div className="w-full h-px bg-slate-400 border-dashed border-t"></div><div className="w-full h-px bg-slate-400 border-dashed border-t"></div><div className="w-full h-px bg-slate-400 border-dashed border-t"></div></div> {plannedData.map((val, i) => { const planVal = val || 0; const realVal = realizedData[i] || 0; return ( <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedWeek(i === selectedWeek ? null : i)}> <div className="w-full relative flex items-end justify-center h-full rounded-t-sm"> <div className={`w-full absolute bottom-0 border-2 border-dashed border-slate-300 bg-slate-50 transition-all duration-500 rounded-t-sm z-0 ${planVal === 0 ? 'h-1' : ''}`} style={{ height: `${planVal > 0 ? (planVal / max) * 100 : 1}%` }}></div> <div className={`w-full absolute bottom-0 transition-all duration-700 rounded-t-sm z-10 ${selectedWeek === i ? 'bg-indigo-600' : 'bg-indigo-400 hover:bg-indigo-50'}`} style={{ height: `${planVal > 0 ? (realVal / max) * 100 : 0}%` }}></div> </div> <span className={`text-[9px] font-bold z-20 ${selectedWeek === i ? 'text-indigo-600 scale-125' : 'text-slate-400'}`}>S{i + 1}</span> </div> )})} </div> {selectedWeek !== null && ( <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-800 animate-in slide-in-from-top-2 shadow-sm"> <div className="flex justify-between items-center mb-1"><span className="font-bold flex items-center gap-1"><Clock size={12}/> Semaine {selectedWeek + 1}</span><span className="bg-white px-2 py-0.5 rounded shadow-sm text-[10px] font-black border border-indigo-100">{realizedData[selectedWeek] || 0} / {plannedData[selectedWeek] || 0} min</span></div> <div className="text-slate-600 italic">{(realizedData[selectedWeek] || 0) >= (plannedData[selectedWeek] || 1) ? "🎉 Objectif de volume atteint ! Bravo." : "L'objectif est la barre grise. Continuez vos efforts !"}</div> </div> )} </div> ); };
+const BanisterChart = ({ duration }) => { if (!duration) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>; const weeks = Array.from({length: duration + 2}, (_, i) => i); const data = weeks.map(w => { const ramp = w / duration; const fitness = 20 + (ramp * 60); const fatigue = w >= duration ? 15 : 10 + (ramp * 70) + (Math.sin(w)*10); const form = fitness - fatigue + 30; return { w, fitness, fatigue, form }; }); return ( <div className="w-full h-48 flex items-end gap-1 mt-6 relative bg-white/50 rounded-xl p-2 border border-slate-100 overflow-hidden"> <div className="absolute inset-0 flex flex-col justify-between p-4 opacity-10 pointer-events-none"><div className="w-full h-px bg-slate-900"></div><div className="w-full h-px bg-slate-900"></div><div className="w-full h-px bg-slate-900"></div></div> {data.map((d, i) => ( <div key={i} className="flex-1 flex flex-col justify-end h-full relative group"> <div className="w-2 h-2 bg-green-500 rounded-full absolute left-1/2 -translate-x-1/2 transition-all duration-500 z-20 shadow-sm shadow-green-200" style={{ bottom: `${Math.min(d.form, 95)}%` }}></div> <div className="w-1 bg-indigo-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 rounded-t-full" style={{ height: `${Math.min(d.fitness, 95)}%` }}></div> <div className="w-1 bg-rose-400/40 absolute left-1/2 -translate-x-1/2 bottom-0 -translate-x-[2px] rounded-t-full" style={{ height: `${Math.min(d.fatigue, 95)}%` }}></div> </div> ))} <div className="absolute top-2 left-2 flex flex-wrap gap-3 text-[9px] font-bold bg-white/80 p-1 rounded backdrop-blur-sm z-30 border border-slate-100 shadow-sm"> <span className="text-green-600 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Forme</span> <span className="text-indigo-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-indigo-300"></div> Fitness</span> <span className="text-rose-400 flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-rose-300"></div> Fatigue</span> </div> </div> ); };
+const TrimpChart = ({ plannedData, realizedData }) => { const [selectedPoint, setSelectedPoint] = useState(null); if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>; const trimpData = plannedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); }); const realizedTrimpData = realizedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); }); const maxTrimp = Math.max(...trimpData, 1); return ( <div className="space-y-4"> <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2"><div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Cible</div><div className="flex items-center gap-1"><div className="w-2 h-2 bg-purple-500 rounded-sm"></div> Fait</div></div> <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative"> <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10"><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div></div> {trimpData.map((trimp, i) => { const realizedTrimp = realizedTrimpData[i] || 0; return ( <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedPoint(i === selectedPoint ? null : i)}> <div className="w-full relative flex items-end justify-center h-full rounded-t-sm"> <div className="w-full absolute bottom-0 bg-slate-100 border-2 border-dashed border-slate-300 opacity-60 rounded-t-sm z-0" style={{ height: `${(trimp / maxTrimp) * 80 + 10}%` }}></div> <div className={`w-full absolute bottom-0 transition-all duration-1000 z-10 rounded-t-sm ${selectedPoint === i ? 'bg-purple-600' : 'bg-gradient-to-t from-purple-300 to-purple-500'}`} style={{ height: `${(realizedTrimp / maxTrimp) * 80 + 10}%` }}></div> </div> <span className={`text-[9px] font-mono z-20 ${selectedPoint === i ? 'text-purple-600 font-bold scale-125' : 'text-slate-400'}`}>S{i + 1}</span> </div> )})} </div> {selectedPoint !== null && ( <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-xs text-purple-800 animate-in slide-in-from-top-2 flex items-start gap-2 shadow-sm"> <Flame size={16} className="shrink-0 mt-0.5 text-purple-600"/> <div> <span className="font-bold block mb-1">Charge Semaine {selectedPoint + 1}</span> <div className="flex gap-4 mb-1 text-[10px]"><span className="text-slate-500">Prévu: {trimpData[selectedPoint]}</span><span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint] || 0}</span></div> <div className="text-slate-600 italic">{realizedTrimpData[selectedPoint] > trimpData[selectedPoint] ? "Attention, charge plus élevée que prévu." : "Charge maîtrisée."}</div> </div> </div> )} </div> ); };
+const InstallGuide = ({ onClose }) => ( <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300"> <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative animate-in zoom-in-95 duration-300"> <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"><X size={24}/></button> <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600"><Smartphone size={32} /></div> <h3 className="text-2xl font-black text-slate-800 mb-2">Installer l'App 📱</h3> <p className="text-sm text-slate-500 mb-6 leading-relaxed">Pour une meilleure expérience, ajoutez C-Lab Performance à votre écran d'accueil. C'est gratuit et sans téléchargement !</p> <div className="space-y-4 text-left bg-slate-50 p-4 rounded-xl border border-slate-100"> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">1</span><span className="text-sm text-slate-700">Appuyez sur le bouton <strong>Partager</strong> <Share size={14} className="inline ml-1"/> dans Safari.</span></div> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">2</span><span className="text-sm text-slate-700">Faites défiler vers le bas.</span></div> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">3</span><span className="text-sm text-slate-700">Sélectionnez <strong>"Sur l'écran d'accueil"</strong>.</span></div> </div> <button onClick={onClose} className="mt-6 w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition">C'est compris !</button> </div> </div> );
 
 const ExerciseCatalog = ({ onClose, onSelect }) => {
   const [activeCategory, setActiveCategory] = useState('Jambes');
@@ -661,13 +539,7 @@ const ExerciseCatalog = ({ onClose, onSelect }) => {
             <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2 mb-4"><ListPlus className="text-indigo-600"/> Catalogue d'Exercices</h3>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                <input 
-                    type="text" 
-                    placeholder="Rechercher un exercice..." 
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition font-bold text-slate-700 placeholder:font-normal"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <input type="text" placeholder="Rechercher un exercice..." className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition font-bold text-slate-700 placeholder:font-normal" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
         </div>
         <div className="flex flex-1 overflow-hidden">
@@ -993,7 +865,100 @@ export default function App() {
   const handleSessionCompleteFromModal = (sessionId, isExercise = false, data = null) => { if (isExercise) { toggleExercise(sessionId); if (data) { setExercisesLog(prev => ({...prev, [sessionId]: data})); } } else { if (!completedSessions.has(sessionId)) { toggleSession(sessionId); } } };
   const adaptDifficulty = (weekNum, action) => { let message = ""; let type = 'neutral'; if (action === 'easier') { const newFactor = userData.difficultyFactor + 0.05; setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures ralenties de 5% pour la suite (récupération)."; type = 'warning'; } else if (action === 'harder') { const newFactor = Math.max(0.8, userData.difficultyFactor - 0.05); setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures accélérées de 5% pour la suite (performance) !"; type = 'success'; } else { message = "Semaine validée ! Maintien de la progression prévue."; type = 'success'; } setFeedbackMessage({ text: message, type }); if (weekNum < userData.durationWeeks) setExpandedWeek(weekNum + 1); else setExpandedWeek(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const handleDayClick = (daySessionIds) => { if (!daySessionIds || daySessionIds.length === 0) { setFilteredSessionIds(null); setExpandedSession(null); return; } if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { setFilteredSessionIds(null); setExpandedSession(null); } else { setFilteredSessionIds(daySessionIds); if (daySessionIds.length > 0) { setExpandedSession(daySessionIds[0]); } } };
-  const generatePlan = () => { /* ... (Logique complète de génération, omise pour brièveté, identique à avant) ... */ const newPlan = []; const { durationWeeks: totalWeeks, targetDistance } = userData; const adaptationWeeks = Math.ceil(totalWeeks * 0.3); const taperWeeks = 2; let hypertrophySessionIndex = 0; let streetSessionIndex = 0; let hyroxSessionIndex = 0; let distanceKm = 10; if (targetDistance === '5k') distanceKm = 5; if (targetDistance === '21k') distanceKm = 21.1; if (targetDistance === '42k') distanceKm = 42.195; if (targetDistance === 'hyrox') distanceKm = 8; for (let i = 1; i <= totalWeeks; i++) { const isRaceWeek = i === totalWeeks; const isTaper = i > totalWeeks - taperWeeks; const isAdaptation = i <= adaptationWeeks; const paces = getPaceForWeek(i, totalWeeks, userData.goalTime, userData.progressionStart, userData.difficultyFactor, distanceKm); let sessions = []; let focus = isRaceWeek ? "OBJECTIF" : isTaper ? "AFFÛTAGE" : isAdaptation ? "ADAPTATION" : "DÉVELOPPEMENT"; let volumeLabel = isAdaptation ? "Volume bas" : isTaper ? "Récupération" : "Charge haute"; const isTechWeek = i % 2 !== 0; if (targetDistance === 'hyrox') { focus = isRaceWeek ? "HYROX RACE" : focus; const totalRunSessions = userData.extraRunSessions !== undefined ? userData.extraRunSessions : 1; if (totalRunSessions > 0) { sessions.push({ id: `w${i}-run-eng`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short }); } for(let r=1; r < totalRunSessions; r++) { sessions.push({ id: `w${i}-bonus-r${r}`, day: `RUN ENDURANCE ${r}`, category: 'run', type: "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: "Footing souple pour augmenter le volume aérobie.", scienceNote: "Capillarisation.", planningAdvice: "À placer un jour de repos ou en bi-quotidien.", exercises: RUN_PROTOCOLS.steady }); } const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"]; const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim]; const hyroxCount = userData.hyroxSessionsPerWeek || 3; for(let h=0; h < hyroxCount; h++) { const currentSplitIndex = (hyroxSessionIndex + h) % 5; sessions.push({ id: `w${i}-hyrox-${h}`, day: `HYROX ${h+1}`, category: 'hyrox', type: splitNames[currentSplitIndex], structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 9, description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, scienceNote: "Endurance de force.", planningAdvice: "Simulez les conditions de course.", exercises: splitExos[currentSplitIndex], tags: ['legs'] }); } hyroxSessionIndex += hyroxCount; const extraStrengthCount = userData.extraStrengthSessions || 0; for(let s=0; s < extraStrengthCount; s++) { sessions.push({ id: `w${i}-bonus-s${s}`, day: `BONUS MUSCU ${s+1}`, category: 'strength', type: "Force Max", structure: 'pyramid', intensity: 'high', duration: "60 min", durationMin: 60, paceTarget: "N/A", paceGap: 0, rpe: 8, description: "Renforcement pur pour soutenir la charge Hyrox.", scienceNote: "Recrutement unités motrices.", planningAdvice: "Loin des séances intenses.", exercises: STRENGTH_PROTOCOLS.force.full }); } } else { sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady }); if (userData.runDaysPerWeek >= 2) { let sessionType = ""; let sessionExo = []; if (targetDistance === '5k') { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; } else if (targetDistance === '10k') { const cycle = i % 4; if (cycle === 1) { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; } else if (cycle === 2) { sessionType = "Seuil Anaérobie"; sessionExo = RUN_PROTOCOLS.threshold; } else if (cycle === 3) { sessionType = "Côtes / Force"; sessionExo = RUN_PROTOCOLS.hills; } else { sessionType = "VMA Longue"; sessionExo = RUN_PROTOCOLS.interval_long; } } else if (targetDistance === '21k') { sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold; } else { sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; } sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: sessionType, structure: 'interval', intensity: 'high', duration: "60 min", durationMin: 60, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: `Séance clé pour ${targetDistance}.`, scienceNote: "Développement moteur.", planningAdvice: "Fraîcheur requise.", exercises: sessionExo }); } if (userData.runDaysPerWeek >= 3) { let longRunDuration = 60; let longRunType = "Sortie Longue"; if (targetDistance === '21k') { longRunDuration = 80 + (i * 5); if (longRunDuration > 130) longRunDuration = 90; } if (targetDistance === '42k') { if (i % 3 === 0) { longRunDuration = 90; longRunType = "Sortie Longue (Récup)"; } else { longRunDuration = 100 + (i * 10); if (longRunDuration > 180) longRunDuration = 150; } } if (isTaper) longRunDuration = longRunDuration * 0.6; sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable. Hydratation test.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run }); } const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek; for(let s=1; s<=strengthCount; s++) { let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = []; if (userData.strengthFocus === 'force') { if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } } else { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; } } } else if (userData.strengthFocus === 'street_workout') { const splitNames = ["Street Push", "Street Pull", "Street Legs", "Street Skills", "Street Full Body"]; const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body]; const currentSplitIndex = streetSessionIndex % 5; gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex]; if (currentSplitIndex === 2) gymTags = ['legs']; streetSessionIndex++; } else { const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps/Abdos)", "Legs (Jambes)", "Épaules & Bras", "Dos & Pecs"]; const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back]; const currentSplitIndex = hypertrophySessionIndex % 5; gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex]; if (currentSplitIndex === 2) gymTags = ['legs']; hypertrophySessionIndex++; } sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags }); } } const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox'); newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule }); } setPlan(newPlan); setStep('result'); };
+  
+  const generatePlan = () => { 
+    const newPlan = []; 
+    const { durationWeeks: totalWeeks, targetDistance } = userData; 
+    const adaptationWeeks = Math.ceil(totalWeeks * 0.3); 
+    const taperWeeks = 2; 
+    let hypertrophySessionIndex = 0; 
+    let streetSessionIndex = 0; 
+    let hyroxSessionIndex = 0; 
+    let distanceKm = 10; 
+    
+    if (targetDistance === '5k') distanceKm = 5; 
+    if (targetDistance === '21k') distanceKm = 21.1; 
+    if (targetDistance === '42k') distanceKm = 42.195; 
+    if (targetDistance === 'hyrox') distanceKm = 8; 
+    
+    for (let i = 1; i <= totalWeeks; i++) { 
+        const isRaceWeek = i === totalWeeks; 
+        const isTaper = i > totalWeeks - taperWeeks; 
+        const isAdaptation = i <= adaptationWeeks; 
+        const paces = getPaceForWeek(i, totalWeeks, userData.goalTime, userData.progressionStart, userData.difficultyFactor, distanceKm); 
+        let sessions = []; 
+        let focus = isRaceWeek ? "OBJECTIF" : isTaper ? "AFFÛTAGE" : isAdaptation ? "ADAPTATION" : "DÉVELOPPEMENT"; 
+        let volumeLabel = isAdaptation ? "Volume bas" : isTaper ? "Récupération" : "Charge haute"; 
+        const isTechWeek = i % 2 !== 0; 
+        
+        if (targetDistance === 'hyrox') { 
+            focus = isRaceWeek ? "HYROX RACE" : focus; 
+            const totalRunSessions = userData.extraRunSessions !== undefined ? userData.extraRunSessions : 1; 
+            if (totalRunSessions > 0) { sessions.push({ id: `w${i}-run-eng`, day: "RUN ENGINE", category: 'run', type: "Running Intervals", structure: 'interval', intensity: 'high', duration: "45 min", durationMin: 45, distance: "8 km", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: "Travail de VMA pour supporter les transitions.", scienceNote: "VO2max Running.", planningAdvice: "Essentiel pour le temps global.", exercises: RUN_PROTOCOLS.interval_short }); } 
+            for(let r=1; r < totalRunSessions; r++) { sessions.push({ id: `w${i}-bonus-r${r}`, day: `RUN ENDURANCE ${r}`, category: 'run', type: "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: "Footing souple pour augmenter le volume aérobie.", scienceNote: "Capillarisation.", planningAdvice: "À placer un jour de repos ou en bi-quotidien.", exercises: RUN_PROTOCOLS.steady }); } 
+            const splitNames = ["Hyrox Sleds & Force", "Hyrox Functional Capacité", "Hyrox Erg & Power", "Hyrox Compromised Legs", "Hyrox Full Race Sim"]; 
+            const splitExos = [STRENGTH_PROTOCOLS.hyrox.sleds_strength, STRENGTH_PROTOCOLS.hyrox.functional_endurance, STRENGTH_PROTOCOLS.hyrox.ergs_power, STRENGTH_PROTOCOLS.hyrox.legs_compromised, STRENGTH_PROTOCOLS.hyrox.full_race_sim]; 
+            const hyroxCount = userData.hyroxSessionsPerWeek || 3; 
+            for(let h=0; h < hyroxCount; h++) { const currentSplitIndex = (hyroxSessionIndex + h) % 5; sessions.push({ id: `w${i}-hyrox-${h}`, day: `HYROX ${h+1}`, category: 'hyrox', type: splitNames[currentSplitIndex], structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 9, description: `Entraînement spécifique ${splitNames[currentSplitIndex]}.`, scienceNote: "Endurance de force.", planningAdvice: "Simulez les conditions de course.", exercises: splitExos[currentSplitIndex], tags: ['legs'] }); } 
+            hyroxSessionIndex += hyroxCount; 
+            const extraStrengthCount = userData.extraStrengthSessions || 0; 
+            for(let s=0; s < extraStrengthCount; s++) { sessions.push({ id: `w${i}-bonus-s${s}`, day: `BONUS MUSCU ${s+1}`, category: 'strength', type: "Force Max", structure: 'pyramid', intensity: 'high', duration: "60 min", durationMin: 60, paceTarget: "N/A", paceGap: 0, rpe: 8, description: "Renforcement pur pour soutenir la charge Hyrox.", scienceNote: "Recrutement unités motrices.", planningAdvice: "Loin des séances intenses.", exercises: STRENGTH_PROTOCOLS.force.full }); } 
+        } else { 
+            sessions.push({ id: `w${i}-r1`, day: "RUN 1", category: 'run', type: isTechWeek ? "Endurance + Lignes Droites" : "Endurance Fondamentale", structure: 'steady', intensity: 'low', duration: "45 min", durationMin: 45, distance: calcDist(45, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 3, description: isTechWeek ? "40' cool + 5x80m progressif (lignes droites) pour la foulée." : "Aisance respiratoire stricte. Capacité à parler.", scienceNote: "Zone 1/2 : Densité mitochondriale.", planningAdvice: "Idéal après une journée de repos ou de muscu haut du corps.", exercises: RUN_PROTOCOLS.steady }); 
+            
+            if (userData.runDaysPerWeek >= 2) { 
+                let sessionType = ""; 
+                let sessionExo = []; 
+                if (targetDistance === '5k') { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; } 
+                else if (targetDistance === '10k') { const cycle = i % 4; if (cycle === 1) { sessionType = "VMA Courte"; sessionExo = RUN_PROTOCOLS.interval_short; } else if (cycle === 2) { sessionType = "Seuil Anaérobie"; sessionExo = RUN_PROTOCOLS.threshold; } else if (cycle === 3) { sessionType = "Côtes / Force"; sessionExo = RUN_PROTOCOLS.hills; } else { sessionType = "VMA Longue"; sessionExo = RUN_PROTOCOLS.interval_long; } } 
+                else if (targetDistance === '21k') { sessionType = "Seuil Long"; sessionExo = RUN_PROTOCOLS.threshold; } 
+                else { sessionType = (i%2===0) ? "Allure Marathon" : "Seuil"; sessionExo = (i%2===0) ? RUN_PROTOCOLS.long_run : RUN_PROTOCOLS.threshold; } 
+                sessions.push({ id: `w${i}-r2`, day: "RUN 2", category: 'run', type: sessionType, structure: 'interval', intensity: 'high', duration: "60 min", durationMin: 60, distance: "Varié", paceTarget: paces.interval, paceGap: paces.gap, rpe: 8, description: `Séance clé pour ${targetDistance}.`, scienceNote: "Développement moteur.", planningAdvice: "Fraîcheur requise.", exercises: sessionExo }); 
+            } 
+            
+            if (userData.runDaysPerWeek >= 3) { 
+                let longRunDuration = 60; 
+                let longRunType = "Sortie Longue"; 
+                if (targetDistance === '21k') { longRunDuration = 80 + (i * 5); if (longRunDuration > 130) longRunDuration = 90; } 
+                if (targetDistance === '42k') { if (i % 3 === 0) { longRunDuration = 90; longRunType = "Sortie Longue (Récup)"; } else { longRunDuration = 100 + (i * 10); if (longRunDuration > 180) longRunDuration = 150; } } 
+                if (isTaper) longRunDuration = longRunDuration * 0.6; 
+                sessions.push({ id: `w${i}-r3`, day: "RUN 3", category: 'run', type: longRunType, structure: 'steady', intensity: 'low', duration: `${longRunDuration} min`, durationMin: longRunDuration, distance: calcDist(longRunDuration, paces.valEasy), paceTarget: paces.easyRange, paceGap: paces.gap, rpe: 4, description: "Volume indispensable. Hydratation test.", scienceNote: "Endurance fondamentale.", planningAdvice: "Le weekend.", exercises: RUN_PROTOCOLS.long_run }); 
+            }
+            
+            // --- CORRECTION : AJOUT DU 4ème RUN ---
+            if (userData.runDaysPerWeek >= 4) {
+                 sessions.push({ 
+                     id: `w${i}-r4`, 
+                     day: "RUN 4", 
+                     category: 'run', 
+                     type: "Récupération Active", 
+                     structure: 'steady', 
+                     intensity: 'low', 
+                     duration: "30 min", 
+                     durationMin: 30, 
+                     distance: calcDist(30, paces.valEasy), 
+                     paceTarget: paces.easyRange, 
+                     paceGap: paces.gap, 
+                     rpe: 2, 
+                     description: "Footing très lent pour assimiler le travail.", 
+                     scienceNote: "Flux sanguin.", 
+                     planningAdvice: "Le lendemain de la sortie longue ou de la VMA.", 
+                     exercises: RUN_PROTOCOLS.recovery 
+                 });
+            }
+            
+            const strengthCount = isTaper ? Math.max(0, userData.strengthDaysPerWeek - 2) : userData.strengthDaysPerWeek; 
+            for(let s=1; s<=strengthCount; s++) { 
+                let gymType = ""; let exercises = []; let gymAdvice = ""; let gymTags = []; 
+                if (userData.strengthFocus === 'force') { if (strengthCount === 2) { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; gymAdvice = "⚠️ Évitez la veille du Run 2."; } else { gymType = "Haut du Corps"; exercises = STRENGTH_PROTOCOLS.force.upper; gymAdvice = "Récupération active possible."; } } else { if(s===1) { gymType = "Jambes (Force)"; exercises = STRENGTH_PROTOCOLS.force.legs; gymTags=['legs']; } else { gymType = "Full Body"; exercises = STRENGTH_PROTOCOLS.force.full; } } } else if (userData.strengthFocus === 'street_workout') { const splitNames = ["Street Push", "Street Pull", "Street Legs", "Street Skills", "Street Full Body"]; const splitExos = [STRENGTH_PROTOCOLS.street_workout.push, STRENGTH_PROTOCOLS.street_workout.pull, STRENGTH_PROTOCOLS.street_workout.legs, STRENGTH_PROTOCOLS.street_workout.skills_core, STRENGTH_PROTOCOLS.street_workout.full_body]; const currentSplitIndex = streetSessionIndex % 5; gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex]; if (currentSplitIndex === 2) gymTags = ['legs']; streetSessionIndex++; } else { const splitNames = ["Push (Pecs/Épaules)", "Pull (Dos/Biceps/Abdos)", "Legs (Jambes)", "Épaules & Bras", "Dos & Pecs"]; const splitExos = [STRENGTH_PROTOCOLS.hypertrophy.push, STRENGTH_PROTOCOLS.hypertrophy.pull, STRENGTH_PROTOCOLS.hypertrophy.legs, STRENGTH_PROTOCOLS.hypertrophy.shoulders_arms, STRENGTH_PROTOCOLS.hypertrophy.chest_back]; const currentSplitIndex = hypertrophySessionIndex % 5; gymType = splitNames[currentSplitIndex]; exercises = splitExos[currentSplitIndex]; if (currentSplitIndex === 2) gymTags = ['legs']; hypertrophySessionIndex++; } 
+                sessions.push({ id: `w${i}-s${s}`, day: `GYM ${s}`, category: 'strength', type: gymType, structure: 'pyramid', intensity: 'high', duration: "60-90 min", durationMin: 75, paceTarget: "N/A", paceGap: 0, rpe: 8, description: `Séance ${gymType}.`, scienceNote: "Renforcement.", planningAdvice: gymAdvice, exercises: exercises, tags: gymTags }); 
+            } 
+        } 
+        const weeklySchedule = getRecommendedSchedule(sessions, targetDistance === 'hyrox'); 
+        newPlan.push({ weekNumber: i, focus, volumeLabel, sessions, schedule: weeklySchedule }); 
+    } 
+    setPlan(newPlan); setStep('result'); 
+  };
   const resetPlan = () => { localStorage.removeItem('clab_storage'); setCompletedSessions(new Set()); setCompletedExercises(new Set()); setUserData(defaultUserData); setStep('input'); setPlan([]); };
 
   return (
@@ -1242,11 +1207,6 @@ export default function App() {
                     </div>
                 </div>
             )}
-            
-            {/* BOUTON INSTALLATION PAGE D'ACCUEIL */}
-            <button onClick={() => setShowInstallGuide(true)} className="w-full py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-bold text-sm shadow-sm hover:bg-slate-50 transition flex items-center justify-center gap-2 mt-4">
-                <Smartphone size={18}/> Installer l'App
-            </button>
 
             <button onClick={generatePlan} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-bold text-lg shadow-xl hover:bg-slate-800 transition transform active:scale-[0.98] flex items-center justify-center gap-3">
                 <Sparkles size={20} className="text-yellow-400"/>
