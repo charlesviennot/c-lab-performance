@@ -66,21 +66,43 @@ const formatStopwatch = (seconds) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-// Fonction d'export TCX Améliorée pour Strava
-const downloadTCX = (session, durationSeconds, date) => {
+// Fonction d'export TCX Améliorée pour Strava (Format Hevy-like)
+const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
   const startTime = date.toISOString();
   const endTime = new Date(date.getTime() + durationSeconds * 1000).toISOString();
   
   // Estimation calorique : ~10 kcal/min pour effort moyen/haut
   const calories = Math.floor((durationSeconds / 60) * 10); 
   
-  // Mapping categories : Strava reconnait surtout Running et Biking. Le reste va en "Other".
   let sport = 'Other';
   if (session.category === 'run') sport = 'Running';
   
   const distanceMeters = session.distance ? parseFloat(session.distance) * 1000 : 0;
 
-  // Construction XML avec indentations minimales pour éviter les erreurs de parsing
+  // Construction du résumé détaillé des exercices et poids
+  let notesContent = `${session.type}\n${session.description}\n---\n`;
+  if (session.exercises) {
+      session.exercises.forEach((ex, idx) => {
+          const uniqueId = `${session.id}-ex-${idx}`;
+          const log = exercisesLog[uniqueId];
+          
+          notesContent += `• ${ex.name} (${ex.sets} x ${ex.reps})`;
+          
+          if (log && log.weights && log.weights.some(w => w)) {
+              // Récupérer uniquement les poids non vides
+              const weightsStr = log.weights.filter(w => w && w !== '').map(w => `${w}kg`).join(', ');
+              if (weightsStr) {
+                  notesContent += ` : ${weightsStr}`;
+              }
+          }
+          notesContent += '\n';
+      });
+  }
+  notesContent += `\nRPE: ${session.rpe}/10. Généré par C-Lab Performance.`;
+
+  // Échappement des caractères spéciaux XML
+  const safeNotes = notesContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   const tcxContent = `<?xml version="1.0" encoding="UTF-8"?>
 <TrainingCenterDatabase
   xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"
@@ -106,7 +128,7 @@ const downloadTCX = (session, durationSeconds, date) => {
           </Trackpoint>
         </Track>
       </Lap>
-      <Notes>${session.type} (${session.description}) - RPE: ${session.rpe}/10. Généré par C-Lab Performance.</Notes>
+      <Notes>${safeNotes}</Notes>
       <Creator xsi:type="Device_t">
         <Name>C-Lab Performance</Name>
         <UnitId>0</UnitId>
@@ -126,7 +148,6 @@ const downloadTCX = (session, durationSeconds, date) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  // Nom de fichier propre : date_type.tcx
   const dateStr = new Date().toISOString().split('T')[0];
   const safeType = session.type.replace(/\s+/g, '_').toLowerCase();
   link.download = `clab_${dateStr}_${safeType}.tcx`;
@@ -573,12 +594,13 @@ const ExerciseCatalog = ({ onClose, onSelect }) => {
 };
 
 // --- COMPOSANT MODAL EXERCICE ---
-const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex }) => {
+const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, exerciseIndex, savedData }) => {
   const [imgError, setImgError] = useState(false);
   const [setsStatus, setSetsStatus] = useState([]);
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(null);
+  const [weights, setWeights] = useState([]); // État pour stocker les poids
   
   const isRun = category === 'run'; 
   const audioRef = useRef(null);
@@ -593,8 +615,15 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
             if (match) setsCount = parseInt(match[1]);
         }
         setSetsStatus(new Array(setsCount).fill(false));
+        
+        // Initialisation des poids (depuis sauvegarde ou vide)
+        if (savedData && savedData.weights) {
+            setWeights(savedData.weights);
+        } else {
+            setWeights(new Array(setsCount).fill(''));
+        }
     }
-  }, [exercise, isRun]);
+  }, [exercise, isRun, savedData]);
 
   // Logique du Timer
   useEffect(() => {
@@ -619,6 +648,12 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
     setIsTimerRunning(false);
     setTimer(0);
     setActiveSetIndex(null);
+  };
+
+  const handleWeightChange = (index, val) => {
+      const newWeights = [...weights];
+      newWeights[index] = val;
+      setWeights(newWeights);
   };
 
   const toggleSet = (index) => {
@@ -650,7 +685,7 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
           onComplete(exerciseId); 
       } else {
           const uniqueExerciseId = `${exerciseId}-ex-${exerciseIndex}`;
-          onComplete(uniqueExerciseId, true); 
+          onComplete(uniqueExerciseId, true, { weights }); // On passe les poids lors de la validation
       }
       onClose();
   };
@@ -715,7 +750,24 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
                 <div className="space-y-3">
                     {setsStatus.map((isDone, idx) => (
                         <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                            <div className="flex items-center gap-3"><span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span><span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span></div>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</span>
+                                <span className={`text-sm font-medium ${isDone ? 'text-green-800' : 'text-slate-600'}`}>{exercise.reps} reps</span>
+                            </div>
+                            
+                            {/* INPUT POIDS (KG) */}
+                            <div className="flex items-center gap-2 mr-auto ml-4">
+                                <input 
+                                    type="number" 
+                                    placeholder="kg" 
+                                    className="w-16 py-1 px-2 text-center bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                    value={weights[idx] || ''}
+                                    onChange={(e) => handleWeightChange(idx, e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <span className="text-[10px] text-slate-400 font-bold">KG</span>
+                            </div>
+
                             <button onClick={() => toggleSet(idx)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDone ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}`}>{isDone ? <Check size={18}/> : <Square size={18} className="fill-white"/>}</button>
                         </div>
                     ))}
@@ -1053,11 +1105,20 @@ export default function App() {
   const [expandedWeek, setExpandedWeek] = useState(() => loadState('expandedWeek', 1));
   const [completedSessions, setCompletedSessions] = useState(() => loadState('completedSessions', new Set()));
   const [completedExercises, setCompletedExercises] = useState(() => loadState('completedExercises', new Set()));
+  
+  // NOUVEAU STATE POUR SAUVEGARDER LES POIDS
+  const [exercisesLog, setExercisesLog] = useState(() => loadState('exercisesLog', {}));
 
   useEffect(() => {
-    const dataToSave = { step, activeTab, userData, plan, expandedWeek, completedSessions: Array.from(completedSessions), completedExercises: Array.from(completedExercises) };
+    // On ajoute exercisesLog à la sauvegarde
+    const dataToSave = { 
+        step, activeTab, userData, plan, expandedWeek, 
+        completedSessions: Array.from(completedSessions), 
+        completedExercises: Array.from(completedExercises),
+        exercisesLog 
+    };
     localStorage.setItem('clab_storage', JSON.stringify(dataToSave));
-  }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises]);
+  }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises, exercisesLog]);
 
   const [modalExercise, setModalExercise] = useState(null); 
   const [filteredSessionIds, setFilteredSessionIds] = useState(null);
@@ -1201,6 +1262,22 @@ export default function App() {
       setCatalogSessionId(null);
   };
 
+  const handleDeleteExercise = (weekIdx, sessionId, exIdx) => {
+    const newPlan = plan.map(week => {
+        if (week.weekNumber !== weekIdx) return week;
+        const newSessions = week.sessions.map(session => {
+            if (session.id !== sessionId) return session;
+            const newExercises = session.exercises.filter((_, i) => i !== exIdx);
+            return { ...session, exercises: newExercises };
+        });
+        return { ...week, sessions: newSessions };
+    });
+    setPlan(newPlan);
+    
+    // On pourrait aussi nettoyer completedExercises mais ce n'est pas critique
+    // car les clés sont basées sur l'index qui va changer
+  };
+
   const resetWeekOrder = (weekNumber) => {
     // Suppression du confirm() bloquant pour compatibilité iframe
     const newPlan = plan.map((week) => {
@@ -1313,9 +1390,13 @@ export default function App() {
       setCompletedExercises(newSet);
   };
 
-  const handleSessionCompleteFromModal = (sessionId, isExercise = false) => {
+  const handleSessionCompleteFromModal = (sessionId, isExercise = false, data = null) => {
        if (isExercise) {
            toggleExercise(sessionId); 
+           // Sauvegarde des données supplémentaires (poids)
+           if (data) {
+               setExercisesLog(prev => ({...prev, [sessionId]: data}));
+           }
        } else {
            if (!completedSessions.has(sessionId)) {
                toggleSession(sessionId);
@@ -1533,7 +1614,8 @@ export default function App() {
                 category={modalExercise.category} 
                 exerciseIndex={modalExercise.index} 
                 onClose={() => setModalExercise(null)} 
-                onComplete={(uniqueId, isExercise) => handleSessionCompleteFromModal(uniqueId, isExercise)}
+                onComplete={(uniqueId, isExercise, data) => handleSessionCompleteFromModal(uniqueId, isExercise, data)}
+                savedData={exercisesLog[`${modalExercise.id}-ex-${modalExercise.index}`]} // On passe les données sauvegardées
             />
         )}
 
@@ -1560,7 +1642,7 @@ export default function App() {
 
                     <div className="space-y-3">
                         <button 
-                            onClick={() => downloadTCX(lastCompletedData.session, lastCompletedData.duration, lastCompletedData.date)}
+                            onClick={() => downloadTCX(lastCompletedData.session, lastCompletedData.duration, lastCompletedData.date, exercisesLog)}
                             className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition shadow-lg shadow-orange-200 flex items-center justify-center gap-2"
                         >
                             <Download size={20}/> Exporter pour Strava (.tcx)
@@ -1888,6 +1970,9 @@ export default function App() {
                                                     <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : isSwapSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 animate-pulse' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} ${exerciseSwapSelection && !isSwapSelected ? 'cursor-pointer hover:bg-slate-100' : ''}`} onClick={() => { if (exerciseSwapSelection) handleExerciseSwapRequest(week.weekNumber, session.id, idx); }}>
                                                         <div onClick={(e) => { e.stopPropagation(); handleExerciseSwapRequest(week.weekNumber, session.id, idx); }} className={`p-1 rounded-md transition-colors cursor-pointer ${isSwapSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`} title="Déplacer cet exercice">
                                                             <ArrowRightLeft size={14} />
+                                                        </div>
+                                                        <div onClick={(e) => { e.stopPropagation(); handleDeleteExercise(week.weekNumber, session.id, idx); }} className="p-1 rounded-md transition-colors cursor-pointer bg-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50" title="Supprimer cet exercice">
+                                                            <Trash2 size={14} />
                                                         </div>
                                                         {session.category !== 'run' && (
                                                         <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
