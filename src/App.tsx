@@ -6,7 +6,7 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus, Play, Pause, StopCircle, Download, History, ArrowRight
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus, Play, Pause, StopCircle, Download, History, ArrowRight, Camera
 } from 'lucide-react';
 
 // ==================================================================================
@@ -64,6 +64,96 @@ const formatStopwatch = (seconds) => {
     const s = seconds % 60;
     if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+const getMuscleActivation = (type) => {
+    const active = { chest: false, back: false, shoulders: false, arms: false, abs: false, legs: false, cardio: false };
+    const typeLower = type ? type.toLowerCase() : "";
+    if (typeLower.includes('run') || typeLower.includes('cardio') || typeLower.includes('endurance') || typeLower.includes('vma') || typeLower.includes('seuil')) { active.legs = true; active.cardio = true; }
+    if (typeLower.includes('push') || typeLower.includes('force') || typeLower.includes('pecs') || typeLower.includes('upper')) { active.chest = true; active.shoulders = true; active.arms = true; }
+    if (typeLower.includes('pull') || typeLower.includes('dos') || typeLower.includes('back')) { active.back = true; active.arms = true; }
+    if (typeLower.includes('legs') || typeLower.includes('jambes') || typeLower.includes('squat') || typeLower.includes('sled')) { active.legs = true; }
+    if (typeLower.includes('core') || typeLower.includes('abdos') || typeLower.includes('skills')) { active.abs = true; }
+    if (typeLower.includes('hyrox') || typeLower.includes('full')) { active.legs = true; active.cardio = true; active.shoulders = true; }
+    return active;
+};
+
+// Fonction de génération d'image pour Strava
+const downloadShareImage = (session, durationSeconds, date) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+
+    // Fond
+    ctx.fillStyle = '#0f172a'; // Slate-900
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Titre
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 60px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(session.type.toUpperCase(), canvas.width / 2, 120);
+
+    // Date
+    ctx.fillStyle = '#94a3b8'; // Slate-400
+    ctx.font = '30px sans-serif';
+    ctx.fillText(new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), canvas.width / 2, 180);
+
+    // Stats Box
+    ctx.fillStyle = '#1e293b'; // Slate-800
+    ctx.roundRect ? ctx.roundRect(140, 240, 800, 180, 40) : ctx.fillRect(140, 240, 800, 180);
+    ctx.fill();
+
+    // Stats Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 50px sans-serif';
+    ctx.fillText(formatStopwatch(durationSeconds), 340, 330);
+    ctx.fillText(session.rpe + '/10', 740, 330);
+    
+    ctx.fillStyle = '#64748b'; // Slate-500
+    ctx.font = '24px sans-serif';
+    ctx.fillText("DURÉE", 340, 370);
+    ctx.fillText("INTENSITÉ (RPE)", 740, 370);
+
+    // Graphique Musculaire (SVG Reconstruit pour Canvas)
+    const active = getMuscleActivation(session.type);
+    const primary = "#f43f5e"; // Rose
+    const secondary = "#fb923c"; // Orange
+    const inactive = "#334155"; // Slate-700
+    
+    const svgString = `
+    <svg width="400" height="500" viewBox="0 0 100 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="15" r="10" fill="${inactive}" />
+        <path d="M35 30 H65 V60 H35 Z" fill="${active.chest ? primary : inactive}" rx="5" />
+        <circle cx="25" cy="35" r="8" fill="${active.shoulders ? primary : inactive}" />
+        <circle cx="75" cy="35" r="8" fill="${active.shoulders ? primary : inactive}" />
+        <rect x="15" y="45" width="10" height="40" rx="5" fill="${active.arms ? secondary : inactive}" />
+        <rect x="75" y="45" width="10" height="40" rx="5" fill="${active.arms ? secondary : inactive}" />
+        <rect x="40" y="62" width="20" height="30" rx="2" fill="${active.abs ? primary : inactive}" />
+        <rect x="35" y="95" width="12" height="50" rx="4" fill="${active.legs ? primary : inactive}" />
+        <rect x="53" y="95" width="12" height="50" rx="4" fill="${active.legs ? primary : inactive}" />
+        <rect x="37" y="150" width="8" height="35" rx="3" fill="${active.legs ? secondary : inactive}" />
+        <rect x="55" y="150" width="8" height="35" rx="3" fill="${active.legs ? secondary : inactive}" />
+        ${active.cardio ? `<path d="M56 36 C56 36 58 32 62 32 C66 32 68 36 62 42 L56 46 L50 42 C44 36 46 32 50 32 C54 32 56 36 56 36 Z" fill="${primary}" stroke="white" stroke-width="2"/>` : ''}
+    </svg>`;
+
+    const img = new Image();
+    img.onload = () => {
+        ctx.drawImage(img, 340, 480, 400, 500);
+        
+        // Footer Brand
+        ctx.fillStyle = '#64748b';
+        ctx.font = '24px sans-serif';
+        ctx.fillText("Généré par C-Lab Performance", canvas.width/2, 1040);
+
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `clab_visual_${session.type.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
 };
 
 // Fonction d'export TCX Améliorée pour Strava (Format Hevy-like)
@@ -192,7 +282,7 @@ const getTimeConstraints = (distance) => {
         case '5k': return { min: 15, max: 50, step: 0.5 };
         case '10k': return { min: 25, max: 90, step: 1 };
         case '21k': return { min: 70, max: 160, step: 1 };
-        case '42k': return { min: 160, max: 330, step: 1 };
+        case '42k': return { min: 160, max: 330, step: 1 }; // 2h40 -> 5h30
         case 'hyrox': return { min: 50, max: 130, step: 1 };
         default: return { min: 15, max: 240, step: 1 };
     }
@@ -200,7 +290,9 @@ const getTimeConstraints = (distance) => {
 
 // --- LOGIQUE D'ALLURES ---
 const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFactor, distanceKm) => {
+    // goalTime est en minutes
     const racePace = goalTime / distanceKm;
+    
     const progressRatio = (week - 1) / Math.max(1, totalWeeks - 1);
     const startFactor = 1 + (startPercent / 100);
     const currentFactor = startFactor - (progressRatio * (startFactor - 1.0));
@@ -210,13 +302,25 @@ const getPaceForWeek = (week, totalWeeks, goalTime, startPercent, difficultyFact
     let thresholdRatio = 1.08;
     let intervalRatio = 0.90;
 
-    if (distanceKm === 5) { easyRatio = 1.45; thresholdRatio = 1.15; intervalRatio = 0.95; } 
-    else if (distanceKm === 21.1) { easyRatio = 1.25; thresholdRatio = 1.02; intervalRatio = 0.90; } 
-    else if (distanceKm > 40) { easyRatio = 1.20; thresholdRatio = 0.96; intervalRatio = 0.88; }
+    // Adaptation physio selon la distance
+    if (distanceKm === 5) {
+        easyRatio = 1.45; 
+        thresholdRatio = 1.15; 
+        intervalRatio = 0.95; 
+    } else if (distanceKm === 21.1) {
+        easyRatio = 1.25;
+        thresholdRatio = 1.02; 
+        intervalRatio = 0.90;
+    } else if (distanceKm > 40) { 
+        easyRatio = 1.20; 
+        thresholdRatio = 0.96; 
+        intervalRatio = 0.88; 
+    }
 
     const valEasy = currentRacePace * easyRatio;
     const valThreshold = currentRacePace * thresholdRatio;
     const valInterval = currentRacePace * intervalRatio;
+
     const easyLow = formatPace(valEasy);
     const easyHigh = formatPace(valEasy + 0.5);
 
@@ -239,52 +343,153 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
     }));
 
     if (isHyrox) {
+        // --- LOGIQUE HYROX ---
         const hyroxSessions = sessions.filter(s => s.category === 'hyrox');
         const strengthSessions = sessions.filter(s => s.category === 'strength');
         const runSessions = sessions.filter(s => s.category === 'run');
+
         const hyroxDays = [1, 3, 5, 0, 2, 4, 6]; 
-        hyroxSessions.forEach((s, i) => { const day = hyroxDays[i % 7]; scheduleData[day].sessions.push(s); scheduleData[day].focus = "HYROX WOD"; });
+        hyroxSessions.forEach((s, i) => {
+            const day = hyroxDays[i % 7];
+            scheduleData[day].sessions.push(s);
+            scheduleData[day].focus = "HYROX WOD";
+        });
+
         const strengthDays = [0, 4, 2, 6, 1, 3, 5];
         let strIdx = 0;
-        strengthDays.forEach(day => { if (strIdx < strengthSessions.length && scheduleData[day].sessions.length === 0) { scheduleData[day].sessions.push(strengthSessions[strIdx]); scheduleData[day].focus = "Renfo Pur"; strIdx++; } });
+        strengthDays.forEach(day => {
+            if (strIdx < strengthSessions.length && scheduleData[day].sessions.length === 0) {
+                scheduleData[day].sessions.push(strengthSessions[strIdx]);
+                scheduleData[day].focus = "Renfo Pur";
+                strIdx++;
+            }
+        });
+
         const runDays = [2, 6, 0, 4, 1, 3, 5];
         let runIdx = 0;
-        runDays.forEach(day => { if (runIdx < runSessions.length) { if (scheduleData[day].sessions.length === 0) { scheduleData[day].sessions.push(runSessions[runIdx]); scheduleData[day].focus = "Endurance"; runIdx++; } else if (scheduleData[day].sessions.length === 1 && scheduleData[day].sessions[0].category === 'strength') { scheduleData[day].sessions.push(runSessions[runIdx]); runIdx++; } } });
+        runDays.forEach(day => {
+            if (runIdx < runSessions.length) {
+                if (scheduleData[day].sessions.length === 0) {
+                    scheduleData[day].sessions.push(runSessions[runIdx]);
+                    scheduleData[day].focus = "Endurance";
+                    runIdx++;
+                } 
+                else if (scheduleData[day].sessions.length === 1 && scheduleData[day].sessions[0].category === 'strength') {
+                    scheduleData[day].sessions.push(runSessions[runIdx]);
+                    runIdx++;
+                }
+            }
+        });
+
     } else {
+        // --- LOGIQUE RUNNING CLASSIQUE ---
         const runs = sessions.filter(s => s.category === 'run');
         const gyms = sessions.filter(s => s.category === 'strength');
+
         const longRun = runs.find(r => r.type.includes("Sortie Longue") || r.type.includes("Endurance"));
-        if (longRun) { scheduleData[6].sessions.push(longRun); scheduleData[6].focus = "Volume"; }
+        if (longRun) {
+            scheduleData[6].sessions.push(longRun);
+            scheduleData[6].focus = "Volume";
+        }
+
         const qualityRun = runs.find(r => (r.intensity === 'high' || r.intensity === 'medium') && r.id !== longRun?.id);
-        if (qualityRun) { scheduleData[1].sessions.push(qualityRun); scheduleData[1].focus = "Intensité"; }
+        if (qualityRun) {
+            scheduleData[1].sessions.push(qualityRun);
+            scheduleData[1].focus = "Intensité";
+        }
+
         const heavySession = gyms.find(g => g.type.includes("Sled") || g.type.includes("Jambes") || g.type.includes("Legs"));
         const otherGyms = gyms.filter(g => g.id !== heavySession?.id);
-        if (heavySession) { if (scheduleData[4].sessions.length === 0) { scheduleData[4].sessions.push(heavySession); scheduleData[4].focus = "Force"; } else if (scheduleData[3].sessions.length === 0) { scheduleData[3].sessions.push(heavySession); scheduleData[3].focus = "Force"; } }
+
+        if (heavySession) {
+            if (scheduleData[4].sessions.length === 0) {
+                scheduleData[4].sessions.push(heavySession);
+                scheduleData[4].focus = "Force";
+            } else if (scheduleData[3].sessions.length === 0) {
+                scheduleData[3].sessions.push(heavySession);
+                scheduleData[3].focus = "Force";
+            }
+        }
+
         let gymIdx = 0;
         const fillOrder = [0, 2, 3, 5]; 
-        fillOrder.forEach(dayIdx => { if (scheduleData[dayIdx].sessions.length === 0 && gymIdx < otherGyms.length) { scheduleData[dayIdx].sessions.push(otherGyms[gymIdx]); scheduleData[dayIdx].focus = "Renfo"; gymIdx++; } });
+        
+        fillOrder.forEach(dayIdx => {
+            if (scheduleData[dayIdx].sessions.length === 0 && gymIdx < otherGyms.length) {
+                scheduleData[dayIdx].sessions.push(otherGyms[gymIdx]);
+                scheduleData[dayIdx].focus = "Renfo"; 
+                gymIdx++;
+            }
+        });
+
         const easyRuns = runs.filter(r => r.id !== longRun?.id && r.id !== qualityRun?.id);
         let runIdx = 0;
-        [3, 5, 0, 2].forEach(dayIdx => { if (runIdx < easyRuns.length) { if (scheduleData[dayIdx].sessions.length === 0) { scheduleData[dayIdx].sessions.push(easyRuns[runIdx]); scheduleData[dayIdx].focus = "Endurance"; runIdx++; } else if (scheduleData[dayIdx].sessions.length === 1 && scheduleData[dayIdx].sessions[0].category !== 'run') { const s = scheduleData[dayIdx].sessions[0]; if (!s.type.includes("Jambes")) { scheduleData[dayIdx].sessions.push(easyRuns[runIdx]); runIdx++; } } } });
+        [3, 5, 0, 2].forEach(dayIdx => { 
+            if (runIdx < easyRuns.length) {
+                 if (scheduleData[dayIdx].sessions.length === 0) {
+                     scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                     scheduleData[dayIdx].focus = "Endurance";
+                     runIdx++;
+                 } 
+                 else if (scheduleData[dayIdx].sessions.length === 1 && scheduleData[dayIdx].sessions[0].category !== 'run') {
+                     const s = scheduleData[dayIdx].sessions[0];
+                     if (!s.type.includes("Jambes")) {
+                         scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                         runIdx++;
+                     }
+                 }
+            }
+        });
     }
 
     return scheduleData.map(day => {
         if (day.sessions.length === 0) return { day: day.dayName, activity: "Repos", focus: "Récupération", sessionIds: [] };
         const names = day.sessions.map(s => s.type).join(' + ');
         const ids = day.sessions.map(s => s.id);
-        return { day: day.dayName, activity: names, focus: day.focus || "Entraînement", sessionIds: ids };
+        return { 
+            day: day.dayName, 
+            activity: names, 
+            focus: day.focus || "Entraînement", 
+            sessionIds: ids 
+        };
     });
 };
 
 // --- DATA : PROTOCOLES ---
 const RUN_PROTOCOLS = {
-  steady: [{ name: "Mise en action", sets: "10 min", reps: "Continu", rest: "-", rpe: 2, note: "Progressif", imageKeyword: "jogging", instructions: "Commencez très lentement." }, { name: "Corps de séance", sets: "30-40 min", reps: "Continu", rest: "-", rpe: 3, note: "Zone 2", imageKeyword: "running", instructions: "Allure de croisière." }, { name: "Lignes Droites (Option)", sets: "5", reps: "80m", rest: "Retour marché", rpe: 6, note: "Technique", imageKeyword: "sprint track", instructions: "Accélération progressive sur 80m." }],
-  interval_short: [{ name: "Échauffement Complet", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "stretching run", instructions: "Footing lent + gammes." }, { name: "Fractions 30/30", sets: "2 blocs", reps: "8-10 reps", rest: "2' entre blocs", rpe: 8, note: "VMA", imageKeyword: "track running", instructions: "30 sec vite / 30 sec lent." }, { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Lactate clearance", imageKeyword: "cooling down", instructions: "Trot très lent." }],
-  interval_long: [{ name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "road running", instructions: "Footing + accélérations." }, { name: "Fractions Longues", sets: "4-5", reps: "3-4 min", rest: "2 min", rpe: 8, note: "VMA Longue", imageKeyword: "fast run", instructions: "90-95% VMA." }, { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Cool down", imageKeyword: "sunset run", instructions: "Relâchez tout." }],
-  threshold: [{ name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Aérobie", imageKeyword: "road running", instructions: "Footing progressif." }, { name: "Blocs au Seuil", sets: "3", reps: "8 à 10 min", rest: "2 min trot", rpe: 7, note: "Seuil Anaérobie", imageKeyword: "fast run", instructions: "Allure 'confortablement difficile'." }, { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Récupération", imageKeyword: "sunset run", instructions: "Relâchez totalement." }],
-  hills: [{ name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "trail running", instructions: "Footing." }, { name: "Cote courtes", sets: "8-10", reps: "30-45 sec", rest: "Descente marchée", rpe: 9, note: "Puissance", imageKeyword: "uphill run", instructions: "Montez dynamique." }, { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Cool down", imageKeyword: "forest run", instructions: "Sur le plat." }],
-  long_run: [{ name: "Première partie", sets: "1/3 temps", reps: "Lent", rest: "-", rpe: 3, note: "Économie", imageKeyword: "long run", instructions: "Départ très prudent." }, { name: "Cœur de sortie", sets: "1/3 temps", reps: "Allure Endurance", rest: "-", rpe: 4, note: "Volume", imageKeyword: "marathon training", instructions: "Allure cible endurance." }, { name: "Fin de sortie", sets: "1/3 temps", reps: "Libre", rest: "-", rpe: 5, note: "Mental", imageKeyword: "tired runner", instructions: "Progressive finish." }],
-  recovery: [{ name: "Footing", sets: "30-45 min", reps: "Continu", rest: "-", rpe: 2, note: "Récupération", imageKeyword: "jogging morning", instructions: "Courez 'au feeling', très lentement." }]
+  steady: [
+    { name: "Mise en action", sets: "10 min", reps: "Continu", rest: "-", rpe: 2, note: "Progressif", imageKeyword: "jogging", instructions: "Commencez très lentement. Laissez le corps monter en température. Respiration par le nez recommandée." },
+    { name: "Corps de séance", sets: "30-40 min", reps: "Continu", rest: "-", rpe: 3, note: "Zone 2", imageKeyword: "running", instructions: "Allure de croisière. Vous devez pouvoir tenir une conversation complète sans essoufflement." },
+    { name: "Lignes Droites (Option)", sets: "5", reps: "80m", rest: "Retour marché", rpe: 6, note: "Technique", imageKeyword: "sprint track", instructions: "Accélération progressive sur 80m. Focus sur la pose de pied et le redressement. Ce n'est pas un sprint max." }
+  ],
+  interval_short: [
+    { name: "Échauffement Complet", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "stretching run", instructions: "15' footing lent + 5' de gammes (talons-fesses, montées de genoux, pas chassés) pour activer l'élasticité." },
+    { name: "Fractions 30/30", sets: "2 blocs", reps: "8-10 reps", rest: "2' entre blocs", rpe: 8, note: "VMA", imageKeyword: "track running", instructions: "30 sec vite (dynamique) / 30 sec trot lent. Ne partez pas au sprint, visez la régularité." },
+    { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Lactate clearance", imageKeyword: "cooling down", instructions: "Trot très lent pour faire redescendre la fréquence cardiaque et rincer les muscles." }
+  ],
+  interval_long: [
+    { name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "road running", instructions: "Footing + 3 accélérations progressives." },
+    { name: "Fractions Longues", sets: "4-5", reps: "3-4 min", rest: "2 min", rpe: 8, note: "VMA Longue", imageKeyword: "fast run", instructions: "90-95% VMA. C'est dur mais tenable sur la durée." },
+    { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Cool down", imageKeyword: "sunset run", instructions: "Relâchez tout." }
+  ],
+  threshold: [
+    { name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Aérobie", imageKeyword: "road running", instructions: "Footing progressif. Finir par 2-3 accélérations sur 20 secondes pour monter le cardio." },
+    { name: "Blocs au Seuil", sets: "3", reps: "8 à 10 min", rest: "2 min trot", rpe: 7, note: "Seuil Anaérobie", imageKeyword: "fast run", instructions: "Allure 'confortablement difficile'. On ne peut plus parler, mais on ne souffre pas. Concentration sur le souffle." },
+    { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Récupération", imageKeyword: "sunset run", instructions: "Relâchez totalement les épaules et les bras." }
+  ],
+  hills: [
+    { name: "Échauffement", sets: "20 min", reps: "Continu", rest: "-", rpe: 3, note: "Préparation", imageKeyword: "trail running", instructions: "Footing sur terrain plat avant d'attaquer la pente." },
+    { name: "Cote courtes", sets: "8-10", reps: "30-45 sec", rest: "Descente marchée", rpe: 9, note: "Puissance", imageKeyword: "uphill run", instructions: "Montez dynamique. Poussez fort sur les orteils, levez les genoux, aidez-vous des bras. Récupérez en descendant." },
+    { name: "Retour au calme", sets: "10 min", reps: "Lent", rest: "-", rpe: 2, note: "Cool down", imageKeyword: "forest run", instructions: "Sur le plat pour dérouler les jambes." }
+  ],
+  long_run: [
+    { name: "Première partie", sets: "1/3 temps", reps: "Lent", rest: "-", rpe: 3, note: "Économie", imageKeyword: "long run", instructions: "Départ très prudent. Économisez le glycogène. Hydratez-vous dès les 20 premières minutes." },
+    { name: "Cœur de sortie", sets: "1/3 temps", reps: "Allure Endurance", rest: "-", rpe: 4, note: "Volume", imageKeyword: "marathon training", instructions: "Allure cible endurance. Fluidité, relâchement. Visualisez la course." },
+    { name: "Fin de sortie", sets: "1/3 temps", reps: "Libre", rest: "-", rpe: 5, note: "Mental", imageKeyword: "tired runner", instructions: "Si vous vous sentez bien, accélérez légèrement (progressive finish). Sinon, maintenez l'allure." }
+  ],
+  recovery: [
+    { name: "Footing", sets: "30-45 min", reps: "Continu", rest: "-", rpe: 2, note: "Récupération", imageKeyword: "jogging morning", instructions: "Aucun objectif d'allure. Courez 'au feeling', très lentement. C'est un massage pour les jambes." }
+  ]
 };
 
 const STRENGTH_PROTOCOLS = {
@@ -438,18 +643,7 @@ const WorkoutViz = ({ structure, intensity }) => {
 };
 
 const MuscleHeatmap = ({ type, exercises }) => {
-    const getActiveMuscles = () => {
-        const active = { chest: false, back: false, shoulders: false, arms: false, abs: false, legs: false, cardio: false };
-        const typeLower = type ? type.toLowerCase() : "";
-        if (typeLower.includes('run') || typeLower.includes('cardio') || typeLower.includes('endurance') || typeLower.includes('vma') || typeLower.includes('seuil')) { active.legs = true; active.cardio = true; }
-        if (typeLower.includes('push') || typeLower.includes('force') || typeLower.includes('pecs') || typeLower.includes('upper')) { active.chest = true; active.shoulders = true; active.arms = true; }
-        if (typeLower.includes('pull') || typeLower.includes('dos') || typeLower.includes('back')) { active.back = true; active.arms = true; }
-        if (typeLower.includes('legs') || typeLower.includes('jambes') || typeLower.includes('squat') || typeLower.includes('sled')) { active.legs = true; }
-        if (typeLower.includes('core') || typeLower.includes('abdos') || typeLower.includes('skills')) { active.abs = true; }
-        if (typeLower.includes('hyrox') || typeLower.includes('full')) { active.legs = true; active.cardio = true; active.shoulders = true; }
-        return active;
-    };
-    const active = getActiveMuscles();
+    const active = getMuscleActivation(type);
     const primaryColor = "#f43f5e"; 
     const secondaryColor = "#fb923c"; 
     const inactiveColor = "#e2e8f0"; 
@@ -1096,6 +1290,7 @@ export default function App() {
                     </div>
                     <div className="space-y-3">
                         <button onClick={() => downloadTCX(lastCompletedData.session, lastCompletedData.duration, lastCompletedData.date, exercisesLog)} className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition shadow-lg shadow-orange-200 flex items-center justify-center gap-2"><Download size={20}/> Exporter pour Strava (.tcx)</button>
+                        <button onClick={() => downloadShareImage(lastCompletedData.session, lastCompletedData.duration, lastCompletedData.date)} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition shadow-lg flex items-center justify-center gap-2"><Camera size={20}/> Télécharger le Visuel (Image)</button>
                         <button onClick={() => setLastCompletedData(null)} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition">Fermer</button>
                     </div>
                 </div>
@@ -1240,7 +1435,7 @@ export default function App() {
         ) : activeTab === 'plan' ? (
           // --- ONGLET PROGRAMME ---
           <div className="space-y-4 animate-in slide-in-from-right-4">
-            {/* ... (Code onglet plan inchangé) ... */}
+            
             {userData.difficultyFactor > 1 && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
                     <AlertTriangle className="text-amber-500 shrink-0" size={20}/>
