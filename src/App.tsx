@@ -192,25 +192,25 @@ const downloadTCX = (session, durationSeconds, date, exercisesLog) => {
 
           // Si on a des logs de poids enregistrés par l'utilisateur
           if (log && log.weights && log.weights.length > 0) {
-               log.weights.forEach((w, setIdx) => {
-                   // Si le poids est entré, on l'affiche, sinon c'est Poids du corps ou juste reps
-                   if (w && w !== "") {
-                       notesContent += `Set ${setIdx + 1}: ${w}kg × ${targetReps}\n`;
-                   } else {
-                       notesContent += `Set ${setIdx + 1}: ${targetReps}\n`;
-                   }
-               });
-               // Si l'utilisateur a fait moins de séries que prévu dans le log (cas rare mais possible)
-               if (log.weights.length < setsCount) {
-                   for (let i = log.weights.length; i < setsCount; i++) {
+            log.weights.forEach((w, setIdx) => {
+                // Si le poids est entré, on l'affiche, sinon c'est Poids du corps ou juste reps
+                if (w && w !== "") {
+                    notesContent += `Set ${setIdx + 1}: ${w}kg × ${targetReps}\n`;
+                } else {
+                    notesContent += `Set ${setIdx + 1}: ${targetReps}\n`;
+                }
+            });
+            // Si l'utilisateur a fait moins de séries que prévu dans le log (cas rare mais possible)
+            if (log.weights.length < setsCount) {
+                for (let i = log.weights.length; i < setsCount; i++) {
                         notesContent += `Set ${i + 1}: ${targetReps}\n`;
-                   }
-               }
+                }
+            }
           } else {
-               // Fallback : Si aucun poids n'est saisi, on affiche le format standard pour chaque série
-               for(let i=0; i<setsCount; i++) {
-                   notesContent += `Set ${i + 1}: ${targetReps}\n`;
-               }
+            // Fallback : Si aucun poids n'est saisi, on affiche le format standard pour chaque série
+            for(let i=0; i<setsCount; i++) {
+                notesContent += `Set ${i + 1}: ${targetReps}\n`;
+            }
           }
       });
   }
@@ -426,18 +426,18 @@ const getRecommendedSchedule = (sessions, isHyrox = false) => {
         let runIdx = 0;
         [3, 5, 0, 2].forEach(dayIdx => { 
             if (runIdx < easyRuns.length) {
-                 if (scheduleData[dayIdx].sessions.length === 0) {
-                     scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
-                     scheduleData[dayIdx].focus = "Endurance";
-                     runIdx++;
-                 } 
-                 else if (scheduleData[dayIdx].sessions.length === 1 && scheduleData[dayIdx].sessions[0].category !== 'run') {
-                     const s = scheduleData[dayIdx].sessions[0];
-                     if (!s.type.includes("Jambes")) {
-                         scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
-                         runIdx++;
-                     }
-                 }
+                if (scheduleData[dayIdx].sessions.length === 0) {
+                    scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                    scheduleData[dayIdx].focus = "Endurance";
+                    runIdx++;
+                } 
+                else if (scheduleData[dayIdx].sessions.length === 1 && scheduleData[dayIdx].sessions[0].category !== 'run') {
+                    const s = scheduleData[dayIdx].sessions[0];
+                    if (!s.type.includes("Jambes")) {
+                        scheduleData[dayIdx].sessions.push(easyRuns[runIdx]);
+                        runIdx++;
+                    }
+                }
             }
         });
     }
@@ -907,10 +907,10 @@ const ExerciseModal = ({ exercise, exerciseId, category, onClose, onComplete, ex
         <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
         {isRun ? (
             <div className="bg-slate-50 p-6 border-b border-slate-100 relative">
-                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"><X size={24}/></button>
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full transition hover:bg-slate-100"><X size={24}/></button>
                 <div className="flex items-center gap-2 mb-2">
-                     <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Footprints size={20}/></div>
-                     <span className="text-xs font-bold uppercase text-indigo-500 tracking-wider">Course à Pied</span>
+                   <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Footprints size={20}/></div>
+                   <span className="text-xs font-bold uppercase text-indigo-500 tracking-wider">Course à Pied</span>
                 </div>
                 <h3 className="text-2xl font-black text-slate-800 leading-tight">{exercise.name}</h3>
                 <div className="flex items-center gap-2 mt-2 text-sm text-slate-500 font-medium"><Clock size={16}/> {exercise.sets} • {exercise.reps}</div>
@@ -1034,7 +1034,7 @@ const SessionHistoryDetail = ({ session, exercisesLog, onClose }) => {
 
 // --- 4. MAIN APP ---
 export default function App() {
-  const defaultUserData = { name: "User", weight: 75, goalTime: 50, targetDistance: '10k', runDaysPerWeek: 3, strengthDaysPerWeek: 2, hyroxSessionsPerWeek: 3, extraRunSessions: 0, extraStrengthSessions: 0, strengthFocus: 'hypertrophy', durationWeeks: 10, progressionStart: 15, difficultyFactor: 1.0 };
+  const defaultUserData = { name: "User", weight: 75, goalTime: 50, targetDistance: '10k', runDaysPerWeek: 3, strengthDaysPerWeek: 2, hyroxSessionsPerWeek: 3, extraRunSessions: 0, extraStrengthSessions: 0, strengthFocus: 'hypertrophy', durationWeeks: 10, progressionStart: 15, difficultyFactor: 1.0, raceDate: null };
   const loadState = (key, defaultValue) => {
     if (typeof window === 'undefined') return defaultValue;
     try { const saved = localStorage.getItem('clab_storage'); if (saved) { const parsed = JSON.parse(saved); if (key === 'userData') return { ...defaultValue, ...(parsed[key] || {}) }; if (key === 'completedSessions') return new Set(parsed.completedSessions || []); if (key === 'completedExercises') return new Set(parsed.completedExercises || []); return parsed[key] !== undefined ? parsed[key] : defaultValue; } } catch (e) { console.error(e); } return defaultValue;
@@ -1049,6 +1049,7 @@ export default function App() {
   const [completedSessions, setCompletedSessions] = useState(() => loadState('completedSessions', new Set()));
   const [completedExercises, setCompletedExercises] = useState(() => loadState('completedExercises', new Set()));
   const [exercisesLog, setExercisesLog] = useState(() => loadState('exercisesLog', {}));
+  const [calculationMode, setCalculationMode] = useState('weeks'); // 'weeks' or 'date'
 
   useEffect(() => { const dataToSave = { step, activeTab, userData, plan, expandedWeek, completedSessions: Array.from(completedSessions), completedExercises: Array.from(completedExercises), exercisesLog }; localStorage.setItem('clab_storage', JSON.stringify(dataToSave)); }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises, exercisesLog]);
 
@@ -1064,7 +1065,7 @@ export default function App() {
   const [selectedHistorySession, setSelectedHistorySession] = useState(null);
   const currentTimerRef = useRef(0);
 
-  const handleDistanceSelect = (dist) => { let defaultTime = 50; let defaultDuration = 10; if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } if (dist === '10k') { defaultTime = 50; defaultDuration = 10; } if (dist === '21k') { defaultTime = 105; defaultDuration = 12; } if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } setUserData({ ...userData, targetDistance: dist, goalTime: defaultTime, durationWeeks: defaultDuration }); };
+  const handleDistanceSelect = (dist) => { let defaultTime = 50; let defaultDuration = 10; if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } if (dist === '10k') { defaultTime = 50; defaultDuration = 10; } if (dist === '21k') { defaultTime = 105; defaultDuration = 12; } if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } setUserData({ ...userData, targetDistance: dist, goalTime: defaultTime, durationWeeks: defaultDuration, raceDate: null }); setCalculationMode('weeks'); };
   const handleTimeChange = (delta) => { const isShort = ['5k', '10k', 'hyrox'].includes(userData.targetDistance); const step = isShort ? 0.5 : 1; const newTime = Math.max(15, userData.goalTime + (delta * step)); setUserData({...userData, goalTime: newTime}); };
   const timeConstraints = getTimeConstraints(userData.targetDistance);
   const handleSwapRequest = (weekIdx, dayIdx) => { if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) { setSwapSelection(null); return; } if (!swapSelection) { setSwapSelection({ weekIdx, dayIdx }); return; } if (swapSelection.weekIdx === weekIdx) { handleSwap(weekIdx, swapSelection.dayIdx, dayIdx); setSwapSelection(null); } else { setSwapSelection({ weekIdx, dayIdx }); } };
@@ -1084,6 +1085,31 @@ export default function App() {
   const adaptDifficulty = (weekNum, action) => { let message = ""; let type = 'neutral'; if (action === 'easier') { const newFactor = userData.difficultyFactor + 0.05; setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures ralenties de 5% pour la suite (récupération)."; type = 'warning'; } else if (action === 'harder') { const newFactor = Math.max(0.8, userData.difficultyFactor - 0.05); setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures accélérées de 5% pour la suite (performance) !"; type = 'success'; } else { message = "Semaine validée ! Maintien de la progression prévue."; type = 'success'; } setFeedbackMessage({ text: message, type }); if (weekNum < userData.durationWeeks) setExpandedWeek(weekNum + 1); else setExpandedWeek(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const handleDayClick = (daySessionIds) => { if (!daySessionIds || daySessionIds.length === 0) { setFilteredSessionIds(null); setExpandedSession(null); return; } if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { setFilteredSessionIds(null); setExpandedSession(null); } else { setFilteredSessionIds(daySessionIds); if (daySessionIds.length > 0) { setExpandedSession(daySessionIds[0]); } } };
   
+  // --- NOUVELLE FONCTION LOGIQUE DATE ---
+  const handleDateSelection = (e) => {
+    const dateStr = e.target.value;
+    if(!dateStr) return;
+    const targetDate = new Date(dateStr);
+    const today = new Date();
+    const diffTime = targetDate - today;
+    const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+
+    if (diffWeeks < 4) {
+        alert("La date est trop proche ! Il faut au minimum 4 semaines de préparation pour un cycle complet.");
+        return;
+    }
+    if (diffWeeks > 52) {
+         alert("La date est trop loin ! Maximum 1 an.");
+         return;
+    }
+
+    setUserData({
+        ...userData,
+        raceDate: dateStr,
+        durationWeeks: diffWeeks
+    });
+  };
+
   const generatePlan = () => { 
     const newPlan = []; 
     const { durationWeeks: totalWeeks, targetDistance } = userData; 
@@ -1182,7 +1208,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 flex justify-center sm:py-10 text-slate-800 font-sans">
       <div className="w-full max-w-md sm:max-w-3xl bg-slate-50 min-h-screen sm:min-h-fit sm:rounded-3xl sm:shadow-2xl overflow-hidden flex flex-col relative">
-       
+        
       {step === 'input' && (
         <div className="bg-slate-900 relative overflow-hidden text-white pt-12 pb-24 rounded-b-[3rem] shadow-2xl">
              <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
@@ -1221,6 +1247,7 @@ export default function App() {
                     <FlaskConical size={12}/> C-Lab Performance
                     </div>
                     <h1 className="text-xl md:text-2xl font-black">Plan {userData.targetDistance === 'hyrox' ? 'HYROX' : 'Running'}</h1>
+                    {userData.raceDate && <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">Objectif le {new Date(userData.raceDate).toLocaleDateString()}</div>}
                 </div>
             </div>
              <div className="flex w-full sm:w-auto bg-slate-800 rounded-lg p-1">
@@ -1336,7 +1363,7 @@ export default function App() {
                         </div>
                         <button onClick={() => handleTimeChange(1)} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition active:scale-95"><Plus size={20} /></button>
                     </div>
-                    
+                   
                     <div className="px-2 pb-1">
                         <input 
                             type="range" 
@@ -1359,17 +1386,44 @@ export default function App() {
                 )}
               </div>
 
+              {/* MODIFICATION ICI POUR L'ÉCHÉANCE */}
               <div className="space-y-4">
-                <label className="text-xs font-bold text-slate-400 uppercase">Durée Prépa</label>
-                <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-slate-300 transition">
-                    <button onClick={() => setUserData({...userData, durationWeeks: Math.max(4, userData.durationWeeks - 1)})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Minus size={20} /></button>
-                    <div className="flex-1 text-center relative">
-                        <input type="number" value={userData.durationWeeks} onChange={(e) => setUserData({...userData, durationWeeks: Number(e.target.value)})} className="w-full bg-transparent text-center font-black text-3xl text-slate-700 outline-none p-2"/>
-                        <Clock className="absolute top-1/2 -translate-y-1/2 right-2 text-slate-200 opacity-50 pointer-events-none" size={40} />
-                    </div>
-                    <button onClick={() => setUserData({...userData, durationWeeks: userData.durationWeeks + 1})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Plus size={20} /></button>
+                <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-400 uppercase">Échéance / Durée</label>
+                    <button 
+                        onClick={() => setCalculationMode(prev => prev === 'weeks' ? 'date' : 'weeks')}
+                        className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 bg-indigo-50 px-2 py-1 rounded transition flex items-center gap-1"
+                    >
+                        {calculationMode === 'weeks' ? 'Passer en Mode Date 📅' : 'Passer en Mode Semaines ⏱️'}
+                    </button>
                 </div>
-                <p className="text-xs text-slate-400 text-center mt-2">{userData.durationWeeks} semaines de progression</p>
+                
+                {calculationMode === 'weeks' ? (
+                    <div className="flex items-center bg-slate-50 p-1 rounded-xl border-2 border-transparent focus-within:border-slate-300 transition">
+                        <button onClick={() => setUserData({...userData, durationWeeks: Math.max(4, userData.durationWeeks - 1), raceDate: null})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Minus size={20} /></button>
+                        <div className="flex-1 text-center relative">
+                            <input type="number" value={userData.durationWeeks} onChange={(e) => setUserData({...userData, durationWeeks: Number(e.target.value), raceDate: null})} className="w-full bg-transparent text-center font-black text-3xl text-slate-700 outline-none p-2"/>
+                            <Clock className="absolute top-1/2 -translate-y-1/2 right-2 text-slate-200 opacity-50 pointer-events-none" size={40} />
+                        </div>
+                        <button onClick={() => setUserData({...userData, durationWeeks: userData.durationWeeks + 1, raceDate: null})} className="p-4 bg-white rounded-lg shadow-sm text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"><Plus size={20} /></button>
+                    </div>
+                ) : (
+                    <div className="bg-slate-50 p-2 rounded-xl border-2 border-transparent focus-within:border-indigo-100 transition">
+                         <div className="flex items-center bg-white rounded-lg shadow-sm">
+                            <input 
+                                type="date" 
+                                value={userData.raceDate || ''}
+                                onChange={handleDateSelection}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="w-full bg-transparent text-center font-black text-xl text-slate-700 outline-none p-4"
+                            />
+                         </div>
+                    </div>
+                )}
+                
+                <p className="text-xs text-slate-400 text-center mt-2">
+                    {calculationMode === 'date' && userData.raceDate ? `Objectif dans ${userData.durationWeeks} semaines` : `${userData.durationWeeks} semaines de progression`}
+                </p>
               </div>
             </div>
 
@@ -1435,7 +1489,7 @@ export default function App() {
         ) : activeTab === 'plan' ? (
           // --- ONGLET PROGRAMME ---
           <div className="space-y-4 animate-in slide-in-from-right-4">
-            
+           
             {userData.difficultyFactor > 1 && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
                     <AlertTriangle className="text-amber-500 shrink-0" size={20}/>
@@ -1445,7 +1499,7 @@ export default function App() {
                     </div>
                 </div>
             )}
-            
+           
             {feedbackMessage && (
                 <div className={`p-3 rounded-xl text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${feedbackMessage.type === 'warning' ? 'bg-amber-100 text-amber-800' : feedbackMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>
                     {feedbackMessage.type === 'warning' ? <AlertTriangle size={16}/> : <CheckCircle size={16}/>}
@@ -1478,7 +1532,7 @@ export default function App() {
                       </div>
                       {isOpen ? <ChevronUp size={16} className="text-indigo-500"/> : <ChevronDown size={16} className="text-slate-300"/>}
                     </button>
-                    
+                   
                     {isOpen && (
                       <div className="p-2 space-y-2">
                         {/* PLANNING IDEAL SUGGÉRÉ (DND) */}
@@ -1503,20 +1557,20 @@ export default function App() {
 
                                         return (
                                             <div key={i} className={`flex items-center justify-between p-2 rounded border transition select-none ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02] ring-1 ring-indigo-300' : isDayCompleted ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'} ${isSwapSource ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50 animate-pulse' : ''} ${swapSelection && !isSwapSource ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                                                onClick={() => {
-                                                    if (swapSelection) { handleSwapRequest(week.weekNumber, i); }
-                                                    else if (hasActivity) { const idsToFilter = day.sessionIds; handleDayClick(idsToFilter); }
-                                                }}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                     <button onClick={(e) => { e.stopPropagation(); handleSwapRequest(week.weekNumber, i); }} className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`} title="Déplacer ce jour"><ArrowRightLeft size={12}/></button>
-                                                     <span className={`font-bold w-16 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{day.day}</span>
+                                                    onClick={() => {
+                                                        if (swapSelection) { handleSwapRequest(week.weekNumber, i); }
+                                                        else if (hasActivity) { const idsToFilter = day.sessionIds; handleDayClick(idsToFilter); }
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                         <button onClick={(e) => { e.stopPropagation(); handleSwapRequest(week.weekNumber, i); }} className={`p-1 rounded-md transition-colors ${isSwapSource ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`} title="Déplacer ce jour"><ArrowRightLeft size={12}/></button>
+                                                         <span className={`font-bold w-16 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{day.day}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 overflow-hidden">
+                                                         {isDayCompleted && !isSelected && <CheckCircle size={10} className="text-green-500 shrink-0"/>}
+                                                         <span className={`font-medium truncate ${isSelected ? 'text-indigo-100' : day.activity.includes('Repos') ? 'text-slate-400' : 'text-indigo-600'}`}>{day.activity}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 overflow-hidden">
-                                                     {isDayCompleted && !isSelected && <CheckCircle size={10} className="text-green-500 shrink-0"/>}
-                                                     <span className={`font-medium truncate ${isSelected ? 'text-indigo-100' : day.activity.includes('Repos') ? 'text-slate-400' : 'text-indigo-600'}`}>{day.activity}</span>
-                                                </div>
-                                            </div>
                                         );
                                     })}
                                 </div>
@@ -1545,112 +1599,112 @@ export default function App() {
                                                 ? 'bg-white border-indigo-200 shadow-lg ring-1 ring-indigo-100' // Style "Pop" quand filtré
                                                 : 'bg-white border-slate-100 hover:border-indigo-300 shadow-sm hover:shadow-md'
                                 }`}>
-                                
-                                {/* BANDEAU DE MOTIVATION (Seulement si étendu et pas fini) */}
-                                {isExpandedSession && !isDone && (
-                                    <div className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest py-1.5 flex items-center justify-center gap-2 rounded-t-lg animate-in slide-in-from-top-1 fade-in duration-300">
-                                        <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
-                                        GO ! MODE GUERRIER ACTIVÉ
-                                        <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
-                                    </div>
-                                )}
-
-                                <div onClick={() => { if(session.exercises) { setExpandedSession(isExpandedSession ? null : session.id); } else { toggleSession(session.id); } }} className={`cursor-pointer relative ${isExpandedSession && !isDone ? 'p-4' : 'p-3'}`}>
-                                    {isDone && (
-                                        <button onClick={(e) => { e.stopPropagation(); unvalidateSession(session.id); }} className="absolute top-2 right-2 text-green-600 hover:text-green-800 bg-white p-1 rounded-full shadow-sm z-20" title="Annuler la validation"><Undo2 size={14} /></button>
+                                     
+                                    {/* BANDEAU DE MOTIVATION (Seulement si étendu et pas fini) */}
+                                    {isExpandedSession && !isDone && (
+                                        <div className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest py-1.5 flex items-center justify-center gap-2 rounded-t-lg animate-in slide-in-from-top-1 fade-in duration-300">
+                                            <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
+                                            GO ! MODE GUERRIER ACTIVÉ
+                                            <Flame size={12} className="text-yellow-300 fill-yellow-300 animate-pulse"/>
+                                        </div>
                                     )}
-                                    <div className="flex justify-between items-center mb-3">
-                                        <div className="flex items-center gap-2">
-                                        {isDone ? <CheckCircle size={16} className="text-green-500"/> : session.category === 'run' ? <Footprints size={16} className="text-indigo-500"/> : <Dumbbell size={16} className="text-rose-500"/>}
-                                        <span className={`font-bold text-xs uppercase ${isDone ? 'text-green-700' : 'text-slate-700'}`}>{session.type}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2"><RpeBadge level={session.rpe} /><WorkoutViz structure={session.structure} intensity={session.intensity}/></div>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
-                                                <div className="flex items-center gap-1"><Clock size={12}/> {session.duration}</div>
-                                                {session.category === 'run' && session.distance && (<div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-1.5 rounded"><Ruler size={12}/> {session.distance}</div>)}
+
+                                    <div onClick={() => { if(session.exercises) { setExpandedSession(isExpandedSession ? null : session.id); } else { toggleSession(session.id); } }} className={`cursor-pointer relative ${isExpandedSession && !isDone ? 'p-4' : 'p-3'}`}>
+                                        {isDone && (
+                                            <button onClick={(e) => { e.stopPropagation(); unvalidateSession(session.id); }} className="absolute top-2 right-2 text-green-600 hover:text-green-800 bg-white p-1 rounded-full shadow-sm z-20" title="Annuler la validation"><Undo2 size={14} /></button>
+                                        )}
+                                        <div className="flex justify-between items-center mb-3">
+                                            <div className="flex items-center gap-2">
+                                            {isDone ? <CheckCircle size={16} className="text-green-500"/> : session.category === 'run' ? <Footprints size={16} className="text-indigo-500"/> : <Dumbbell size={16} className="text-rose-500"/>}
+                                            <span className={`font-bold text-xs uppercase ${isDone ? 'text-green-700' : 'text-slate-700'}`}>{session.type}</span>
                                             </div>
-                                            <p className="text-xs text-slate-600 leading-relaxed">{session.description}</p>
-                                            {!isDone && session.planningAdvice && (<div className="flex items-start gap-1.5 mt-1 bg-amber-50 p-2 rounded-lg text-[10px] text-amber-800 border border-amber-100"><Info size={12} className="shrink-0 mt-0.5"/><span><strong>Conseil :</strong> {session.planningAdvice}</span></div>)}
-                                    </div>
-                                    {session.category === 'run' && session.paceGap > -1 && (<div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span><span className="font-black text-slate-800 text-sm">{session.paceTarget}</span><span className="text-[9px] text-slate-400">min/km</span></div>)}
-                                    {session.exercises && !isDone && (<div className="mt-2 text-center text-[10px] text-slate-400 font-medium">{session.category === 'run' ? "Cliquez pour voir la séance ▼" : "Cliquez pour le suivi série ▼"}</div>)}
-                                </div>
-                                {isExpandedSession && session.exercises && !isDone && (
-                                    <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
-                                        
-                                        {/* SECTION CHRONOMÈTRE */}
-                                        {activeTimerSessionId === session.id ? (
-                                            <LiveSessionTimer 
-                                                timerRef={currentTimerRef}
-                                                onFinish={(duration) => handleTimerFinish(session.id, duration)} 
-                                            />
-                                        ) : (
-                                            <button onClick={() => setActiveTimerSessionId(session.id)} className="w-full mb-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl flex items-center justify-center gap-2 font-bold text-sm shadow-md transition-all">
-                                                <Play size={16} className="fill-white"/> Démarrer le Chrono
-                                            </button>
-                                        )}
-
-                                        <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
-                                        <div className="space-y-2">
-                                            {session.exercises.map((exo, idx) => {
-                                                const uniqueExerciseId = `${session.id}-ex-${idx}`;
-                                                const isChecked = completedExercises.has(uniqueExerciseId);
-                                                const isSwapSelected = exerciseSwapSelection && exerciseSwapSelection.sessionId === session.id && exerciseSwapSelection.exIdx === idx;
-                                                return (
-                                                    <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : isSwapSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 animate-pulse' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} ${exerciseSwapSelection && !isSwapSelected ? 'cursor-pointer hover:bg-slate-100' : ''}`} onClick={() => { if (exerciseSwapSelection) handleExerciseSwapRequest(week.weekNumber, session.id, idx); }}>
-                                                        <div onClick={(e) => { e.stopPropagation(); handleExerciseSwapRequest(week.weekNumber, session.id, idx); }} className={`p-1 rounded-md transition-colors cursor-pointer ${isSwapSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`} title="Déplacer cet exercice">
-                                                            <ArrowRightLeft size={14} />
-                                                        </div>
-                                                        <div onClick={(e) => { e.stopPropagation(); handleDeleteExercise(week.weekNumber, session.id, idx); }} className="p-1 rounded-md transition-colors cursor-pointer bg-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50" title="Supprimer cet exercice">
-                                                            <Trash2 size={14} />
-                                                        </div>
-                                                        {session.category !== 'run' && (
-                                                        <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
-                                                            {isChecked ? <CheckSquare size={20} className="text-green-500" /> : <Square size={20} className="text-slate-300 hover:text-indigo-400" />}
-                                                        </div>
-                                                        )}
-                                                        <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise({data: exo, id: session.id, category: session.category, index: idx})}>
-                                                            <div className="flex items-center gap-2">
-                                                                <HelpCircle size={14} className="text-slate-300"/>
-                                                                <div className={isChecked ? 'opacity-50' : ''}>
-                                                                    <div className="font-bold text-xs text-slate-800">{exo.name}</div>
-                                                                    <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>RPE {exo.rpe}</div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                            <div className="flex items-center gap-2"><RpeBadge level={session.rpe} /><WorkoutViz structure={session.structure} intensity={session.intensity}/></div>
                                         </div>
-                                        {/* Bouton Ajouter Exercice */}
-                                        <button onClick={() => setCatalogSessionId(session.id)} className="w-full mt-2 py-2 border border-dashed border-indigo-200 text-indigo-500 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition flex items-center justify-center gap-1">
-                                            <Plus size={14}/> Ajouter un exercice
-                                        </button>
-
-                                        {/* Bouton global pour valider la séance entière */}
-                                        { (session.category === 'run' || isSessionFullyDone) && (
-                                            <button 
-                                                onClick={(e) => { 
-                                                    e.stopPropagation();
-                                                    // SI CHRONO ACTIF : On arrête le chrono et on récupère le temps exact
-                                                    if (activeTimerSessionId === session.id) {
-                                                        handleTimerFinish(session.id, currentTimerRef.current);
-                                                    } else {
-                                                        // SI PAS DE CHRONO : On valide manuellement avec un temps théorique pour afficher quand même la victoire
-                                                        const theoreticalTime = (typeof session.durationMin === 'number' ? session.durationMin : 45) * 60;
-                                                        handleTimerFinish(session.id, theoreticalTime);
-                                                    }
-                                                }} 
-                                                className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1 animate-in fade-in slide-in-from-bottom-2 hover:bg-green-600 transition"
-                                            >
-                                                <CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}
-                                            </button>
-                                        )}
+                                        <div className="flex flex-col gap-2">
+                                                <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
+                                                    <div className="flex items-center gap-1"><Clock size={12}/> {session.duration}</div>
+                                                    {session.category === 'run' && session.distance && (<div className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-1.5 rounded"><Ruler size={12}/> {session.distance}</div>)}
+                                                </div>
+                                                <p className="text-xs text-slate-600 leading-relaxed">{session.description}</p>
+                                                {!isDone && session.planningAdvice && (<div className="flex items-start gap-1.5 mt-1 bg-amber-50 p-2 rounded-lg text-[10px] text-amber-800 border border-amber-100"><Info size={12} className="shrink-0 mt-0.5"/><span><strong>Conseil :</strong> {session.planningAdvice}</span></div>)}
+                                        </div>
+                                        {session.category === 'run' && session.paceGap > -1 && (<div className="mt-3 pt-2 border-t border-slate-100 flex justify-end items-baseline gap-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Cible</span><span className="font-black text-slate-800 text-sm">{session.paceTarget}</span><span className="text-[9px] text-slate-400">min/km</span></div>)}
+                                        {session.exercises && !isDone && (<div className="mt-2 text-center text-[10px] text-slate-400 font-medium">{session.category === 'run' ? "Cliquez pour voir la séance ▼" : "Cliquez pour le suivi série ▼"}</div>)}
                                     </div>
-                                )}
+                                    {isExpandedSession && session.exercises && !isDone && (
+                                        <div className="bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg animate-in slide-in-from-top-2">
+                                                 
+                                                {/* SECTION CHRONOMÈTRE */}
+                                                {activeTimerSessionId === session.id ? (
+                                                    <LiveSessionTimer 
+                                                        timerRef={currentTimerRef}
+                                                        onFinish={(duration) => handleTimerFinish(session.id, duration)} 
+                                                    />
+                                                ) : (
+                                                    <button onClick={() => setActiveTimerSessionId(session.id)} className="w-full mb-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl flex items-center justify-center gap-2 font-bold text-sm shadow-md transition-all">
+                                                        <Play size={16} className="fill-white"/> Démarrer le Chrono
+                                                    </button>
+                                                )}
+
+                                                <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Protocole Scientifique (Cliquer pour info)</h4>
+                                                <div className="space-y-2">
+                                                    {session.exercises.map((exo, idx) => {
+                                                        const uniqueExerciseId = `${session.id}-ex-${idx}`;
+                                                        const isChecked = completedExercises.has(uniqueExerciseId);
+                                                        const isSwapSelected = exerciseSwapSelection && exerciseSwapSelection.sessionId === session.id && exerciseSwapSelection.exIdx === idx;
+                                                        return (
+                                                            <div key={idx} className={`bg-white p-2 rounded border transition-colors flex items-center gap-3 ${isChecked ? 'border-green-200 bg-green-50' : isSwapSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 animate-pulse' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50'} ${exerciseSwapSelection && !isSwapSelected ? 'cursor-pointer hover:bg-slate-100' : ''}`} onClick={() => { if (exerciseSwapSelection) handleExerciseSwapRequest(week.weekNumber, session.id, idx); }}>
+                                                                    <div onClick={(e) => { e.stopPropagation(); handleExerciseSwapRequest(week.weekNumber, session.id, idx); }} className={`p-1 rounded-md transition-colors cursor-pointer ${isSwapSelected ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50'}`} title="Déplacer cet exercice">
+                                                                        <ArrowRightLeft size={14} />
+                                                                    </div>
+                                                                    <div onClick={(e) => { e.stopPropagation(); handleDeleteExercise(week.weekNumber, session.id, idx); }} className="p-1 rounded-md transition-colors cursor-pointer bg-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50" title="Supprimer cet exercice">
+                                                                        <Trash2 size={14} />
+                                                                    </div>
+                                                                    {session.category !== 'run' && (
+                                                                    <div onClick={(e) => { e.stopPropagation(); toggleExercise(uniqueExerciseId); }} className="cursor-pointer">
+                                                                        {isChecked ? <CheckSquare size={20} className="text-green-500" /> : <Square size={20} className="text-slate-300 hover:text-indigo-400" />}
+                                                                    </div>
+                                                                    )}
+                                                                    <div className="flex-1 flex justify-between items-center cursor-help" onClick={() => setModalExercise({data: exo, id: session.id, category: session.category, index: idx})}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <HelpCircle size={14} className="text-slate-300"/>
+                                                                            <div className={isChecked ? 'opacity-50' : ''}>
+                                                                                <div className="font-bold text-xs text-slate-800">{exo.name}</div>
+                                                                                <div className="text-[10px] text-slate-500">{exo.sets.toString().includes('min') || exo.sets.toString().includes('bloc') ? exo.sets : `${exo.sets} séries`} • {exo.reps.includes('reps') ? exo.reps : `${exo.reps}`} {exo.rest !== '-' ? `• R: ${exo.rest}` : ''}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>RPE {exo.rpe}</div>
+                                                                    </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {/* Bouton Ajouter Exercice */}
+                                                <button onClick={() => setCatalogSessionId(session.id)} className="w-full mt-2 py-2 border border-dashed border-indigo-200 text-indigo-500 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition flex items-center justify-center gap-1">
+                                                    <Plus size={14}/> Ajouter un exercice
+                                                </button>
+
+                                                {/* Bouton global pour valider la séance entière */}
+                                                { (session.category === 'run' || isSessionFullyDone) && (
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation();
+                                                            // SI CHRONO ACTIF : On arrête le chrono et on récupère le temps exact
+                                                            if (activeTimerSessionId === session.id) {
+                                                                handleTimerFinish(session.id, currentTimerRef.current);
+                                                            } else {
+                                                                // SI PAS DE CHRONO : On valide manuellement avec un temps théorique pour afficher quand même la victoire
+                                                                const theoreticalTime = (typeof session.durationMin === 'number' ? session.durationMin : 45) * 60;
+                                                                handleTimerFinish(session.id, theoreticalTime);
+                                                            }
+                                                        }} 
+                                                        className="mt-3 w-full py-2 bg-green-500 text-white rounded font-bold text-xs flex items-center justify-center gap-1 animate-in fade-in slide-in-from-bottom-2 hover:bg-green-600 transition"
+                                                    >
+                                                        <CheckCircle size={12} /> {session.category === 'run' ? "Terminer la séance" : "Valider toute la séance"}
+                                                    </button>
+                                                )}
+                                        </div>
+                                    )}
                                 </div>
                             );
                             })
@@ -1659,7 +1713,7 @@ export default function App() {
                         )}
                       </div>
                     )}
-                    
+                   
                     {/* FEEDBACK SEMAINE - SEULEMENT SI TOUT EST FINI */}
                     {isOpen && allSessionsCompleted && (
                         <div className="p-4 border-t border-green-100 bg-green-50 flex flex-col gap-3 animate-in slide-in-from-bottom-2">
@@ -1678,7 +1732,7 @@ export default function App() {
         ) : (
           // --- ONGLET STATS & SCIENCE (Complet) ---
           <div className="space-y-6 animate-in slide-in-from-left-4">
-             {/* ... (Contenu stats identique à avant) ... */}
+           {/* ... (Contenu stats identique à avant) ... */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
               <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-6"><BarChart3 className="text-indigo-600"/> Votre Progression</h3>
               <div className="grid grid-cols-3 gap-4 mb-8">
@@ -1714,7 +1768,7 @@ export default function App() {
                     )}
                 </div>
             </div>
-            
+           
             {/* BOUTON INSTALLATION */}
             <button 
                 onClick={() => setShowInstallGuide(true)}
