@@ -6,7 +6,8 @@ import {
   Dumbbell, Gauge, BarChart3, BookOpen, CheckCircle, Brain, Target,
   Calendar as CalendarIcon, Ruler, GraduationCap,
   ShieldCheck, Layers, FlaskConical, AlertTriangle, ThumbsDown, ThumbsUp, Calendar, ArrowLeft, Shuffle, X, ExternalLink, HelpCircle, Filter, Check, ZapOff, TrendingDown, Dna, Save, Square, CheckSquare,
-  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus, Play, Pause, StopCircle, Download, History, ArrowRight, Camera
+  Minus, Plus, Coffee, Smartphone, Share, Flame, Battery, MousePointerClick, Timer, Volume2, Move, ArrowUp, ArrowDown, ArrowRightLeft, Undo2, Trash2, RefreshCw, SkipForward, Medal, Search, ListPlus, Play, Pause, StopCircle, Download, History, ArrowRight, Camera,
+  Utensils, Droplet, Beef, Wheat, Salad, ChevronRight, Scale, ScanBarcode
 } from 'lucide-react';
 
 // ==================================================================================
@@ -723,6 +724,384 @@ const BanisterChart = ({ duration }) => { if (!duration) return <div className="
 const TrimpChart = ({ plannedData, realizedData }) => { const [selectedPoint, setSelectedPoint] = useState(null); if (!plannedData || plannedData.length === 0) return <div className="text-xs text-slate-400 italic text-center p-4">En attente de données...</div>; const trimpData = plannedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); }); const realizedTrimpData = realizedData.map((val, i) => { const intensityFactor = (i % 4 === 0) ? 0.7 : (i % 4 === 1) ? 0.9 : 0.8; return Math.round(val * intensityFactor); }); const maxTrimp = Math.max(...trimpData, 1); return ( <div className="space-y-4"> <div className="flex justify-end gap-3 text-[10px] font-bold uppercase text-slate-400 mb-2"><div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-200 border border-slate-300 rounded-sm"></div> Cible</div><div className="flex items-center gap-1"><div className="w-2 h-2 bg-purple-500 rounded-sm"></div> Fait</div></div> <div className="flex items-end justify-between h-32 gap-1 mt-4 px-2 relative"> <div className="absolute inset-0 flex flex-col justify-between px-2 pointer-events-none opacity-10"><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div><div className="w-full h-px bg-purple-900 border-dashed border-t"></div></div> {trimpData.map((trimp, i) => { const realizedTrimp = realizedTrimpData[i] || 0; return ( <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-pointer relative h-full justify-end z-10" onClick={() => setSelectedPoint(i === selectedPoint ? null : i)}> <div className="w-full relative flex items-end justify-center h-full rounded-t-sm"> <div className="w-full absolute bottom-0 bg-slate-100 border-2 border-dashed border-slate-300 opacity-60 rounded-t-sm z-0" style={{ height: `${(trimp / maxTrimp) * 80 + 10}%` }}></div> <div className={`w-full absolute bottom-0 transition-all duration-1000 z-10 rounded-t-sm ${selectedPoint === i ? 'bg-purple-600' : 'bg-gradient-to-t from-purple-300 to-purple-500'}`} style={{ height: `${(realizedTrimp / maxTrimp) * 80 + 10}%` }}></div> </div> <span className={`text-[9px] font-mono z-20 ${selectedPoint === i ? 'text-purple-600 font-bold scale-125' : 'text-slate-400'}`}>S{i + 1}</span> </div> )})} </div> {selectedPoint !== null && ( <div className="bg-purple-50 p-3 rounded-xl border border-purple-100 text-xs text-purple-800 animate-in slide-in-from-top-2 flex items-start gap-2 shadow-sm"> <Flame size={16} className="shrink-0 mt-0.5 text-purple-600"/> <div> <span className="font-bold block mb-1">Charge Semaine {selectedPoint + 1}</span> <div className="flex gap-4 mb-1 text-[10px]"><span className="text-slate-500">Prévu: {trimpData[selectedPoint]}</span><span className="font-black bg-white px-1.5 py-0.5 rounded border border-purple-100">Fait: {realizedTrimpData[selectedPoint] || 0}</span></div> <div className="text-slate-600 italic">{realizedTrimpData[selectedPoint] > trimpData[selectedPoint] ? "Attention, charge plus élevée que prévu." : "Charge maîtrisée."}</div> </div> </div> )} </div> ); };
 const InstallGuide = ({ onClose }) => ( <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300"> <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative animate-in zoom-in-95 duration-300"> <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"><X size={24}/></button> <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600"><Smartphone size={32} /></div> <h3 className="text-2xl font-black text-slate-800 mb-2">Installer l'App 📱</h3> <p className="text-sm text-slate-500 mb-6 leading-relaxed">Pour une meilleure expérience, ajoutez C-Lab Performance à votre écran d'accueil. C'est gratuit et sans téléchargement !</p> <div className="space-y-4 text-left bg-slate-50 p-4 rounded-xl border border-slate-100"> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">1</span><span className="text-sm text-slate-700">Appuyez sur le bouton <strong>Partager</strong> <Share size={14} className="inline ml-1"/> dans Safari.</span></div> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">2</span><span className="text-sm text-slate-700">Faites défiler vers le bas.</span></div> <div className="flex items-center gap-3"><span className="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs font-bold">3</span><span className="text-sm text-slate-700">Sélectionnez <strong>"Sur l'écran d'accueil"</strong>.</span></div> </div> <button onClick={onClose} className="mt-6 w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition">C'est compris !</button> </div> </div> );
 
+// --- NUTRITION COMPONENTS ---
+
+const ScannerModal = ({ onClose, onScanSuccess }) => {
+    const videoRef = useRef(null);
+    const [barcode, setBarcode] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        let stream = null;
+        const startCamera = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                console.error("Erreur caméra:", err);
+                setError("Accès caméra refusé ou indisponible.");
+            }
+        };
+        startCamera();
+        return () => {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+        };
+    }, []);
+
+    const fetchProduct = async (code) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+            const data = await response.json();
+            if (data.status === 1) {
+                onScanSuccess(data.product);
+                onClose();
+            } else {
+                setError("Produit introuvable sur OpenFoodFacts.");
+            }
+        } catch (err) {
+            setError("Erreur de connexion.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[90] bg-black flex flex-col items-center justify-center">
+            <div className="relative w-full h-full max-w-md bg-black flex flex-col">
+                <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
+                    <span className="text-white font-bold flex items-center gap-2"><ScanBarcode size={20}/> Scanner un produit</span>
+                    <button onClick={onClose} className="p-2 bg-white/10 rounded-full text-white"><X size={20}/></button>
+                </div>
+                
+                <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-900">
+                    {!error ? (
+                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover opacity-80"></video>
+                    ) : (
+                        <div className="text-white text-center p-6">
+                            <AlertTriangle size={48} className="mx-auto mb-4 text-rose-500"/>
+                            <p>{error}</p>
+                        </div>
+                    )}
+                    <div className="absolute inset-0 border-[50px] border-black/50 pointer-events-none"></div>
+                    <div className="absolute w-64 h-40 border-2 border-white/50 rounded-lg pointer-events-none flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-red-500/80 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-slate-900 border-t border-slate-800 space-y-4">
+                     <p className="text-slate-400 text-xs text-center mb-2">Visez le code-barres ou entrez-le manuellement.</p>
+                     <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            placeholder="Code-barres (ex: 3017620422003)" 
+                            className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 outline-none focus:border-indigo-500 transition font-mono"
+                            value={barcode}
+                            onChange={(e) => setBarcode(e.target.value)}
+                        />
+                        <button 
+                            onClick={() => fetchProduct(barcode)}
+                            disabled={!barcode || loading}
+                            className="bg-indigo-600 text-white px-4 py-3 rounded-xl font-bold disabled:opacity-50"
+                        >
+                            {loading ? <RefreshCw className="animate-spin" size={20}/> : <Search size={20}/>}
+                        </button>
+                     </div>
+                     <button 
+                        onClick={() => fetchProduct('3033490004743')} // Code barre Danette pour demo
+                        className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center justify-center gap-2"
+                     >
+                        <Zap size={14} className="text-yellow-400"/> Simulation (Scanner une Danette Vanille)
+                     </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog }) => {
+    const [isAddingMeal, setIsAddingMeal] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [newMeal, setNewMeal] = useState({ name: '', kcal: '', protein: '', carbs: '', fats: '' });
+    
+    // Calculs Métaboliques (Mifflin-St Jeor)
+    const calculateTDEE = () => {
+        if (!userData.weight || !userData.height || !userData.age || !userData.gender) return 2000;
+        
+        let bmr = 0;
+        if (userData.gender === 'male') {
+            bmr = 10 * userData.weight + 6.25 * userData.height - 5 * userData.age + 5;
+        } else {
+            bmr = 10 * userData.weight + 6.25 * userData.height - 5 * userData.age - 161;
+        }
+        
+        // Estimation du niveau d'activité basé sur le plan généré
+        const totalSessions = (userData.runDaysPerWeek || 0) + (userData.strengthDaysPerWeek || 0) + (userData.hyroxSessionsPerWeek || 0);
+        let activityMultiplier = 1.2;
+        if (totalSessions >= 3) activityMultiplier = 1.375;
+        if (totalSessions >= 5) activityMultiplier = 1.55;
+        if (totalSessions >= 7) activityMultiplier = 1.725;
+        
+        const maintenance = Math.round(bmr * activityMultiplier);
+        
+        switch (userData.nutritionGoal) {
+            case 'cut': return maintenance - 400;
+            case 'bulk': return maintenance + 300;
+            default: return maintenance;
+        }
+    };
+    
+    const targetCalories = calculateTDEE();
+    const proteinTarget = Math.round(userData.weight * (userData.strengthDaysPerWeek > 0 ? 2.0 : 1.6)); // 1.6 à 2g/kg
+    const fatTarget = Math.round((targetCalories * 0.25) / 9); // 25% calories from fat
+    const carbTarget = Math.round((targetCalories - (proteinTarget * 4) - (fatTarget * 9)) / 4); // Le reste en glucides
+
+    // Totaux du jour
+    const today = new Date().toISOString().split('T')[0];
+    const todayLog = nutritionLog[today] || [];
+    
+    const currentTotals = todayLog.reduce((acc, meal) => ({
+        kcal: acc.kcal + (parseInt(meal.kcal) || 0),
+        protein: acc.protein + (parseInt(meal.protein) || 0),
+        carbs: acc.carbs + (parseInt(meal.carbs) || 0),
+        fats: acc.fats + (parseInt(meal.fats) || 0)
+    }), { kcal: 0, protein: 0, carbs: 0, fats: 0 });
+
+    const addMeal = () => {
+        if (!newMeal.name || !newMeal.kcal) return;
+        const updatedLog = { ...nutritionLog };
+        if (!updatedLog[today]) updatedLog[today] = [];
+        updatedLog[today].push({ ...newMeal, id: Date.now() });
+        setNutritionLog(updatedLog);
+        setNewMeal({ name: '', kcal: '', protein: '', carbs: '', fats: '' });
+        setIsAddingMeal(false);
+    };
+
+    const deleteMeal = (id) => {
+        const updatedLog = { ...nutritionLog };
+        updatedLog[today] = updatedLog[today].filter(m => m.id !== id);
+        setNutritionLog(updatedLog);
+    };
+
+    const handleScanSuccess = (product) => {
+        // Extraction sécurisée des données OpenFoodFacts
+        const name = product.product_name || "Produit scanné";
+        const nutriments = product.nutriments || {};
+        
+        setNewMeal({
+            name: name,
+            kcal: Math.round(nutriments['energy-kcal_100g'] || 0),
+            protein: Math.round(nutriments.proteins_100g || 0),
+            carbs: Math.round(nutriments.carbohydrates_100g || 0),
+            fats: Math.round(nutriments.fat_100g || 0)
+        });
+        setIsAddingMeal(true); // Ouvre le modal d'ajout pré-rempli
+    };
+
+    const MacroBar = ({ label, current, target, color, icon: Icon, unit = 'g' }) => {
+        const percent = Math.min(100, (current / target) * 100);
+        return (
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                        <div className={`p-1.5 rounded-lg ${color.bg} ${color.text}`}><Icon size={12}/></div>
+                        {label}
+                    </div>
+                    <div className="text-xs font-medium text-slate-400">{current} / {target}{unit}</div>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${color.fill}`} style={{ width: `${percent}%` }}></div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right-4 pb-20">
+            {isScanning && <ScannerModal onClose={() => setIsScanning(false)} onScanSuccess={handleScanSuccess} />}
+            
+            {/* EN-TÊTE RÉSUMÉ TYPE YAZIO */}
+            <div className="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-10 -mt-10 opacity-50 pointer-events-none"></div>
+                <div className="flex justify-between items-start mb-6 relative z-10">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">Mon Énergie</h3>
+                        <p className="text-xs text-slate-500 font-medium">Objectif: {userData.nutritionGoal === 'cut' ? 'Perte de poids' : userData.nutritionGoal === 'bulk' ? 'Prise de masse' : 'Maintien'}</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsScanning(true)} className="bg-slate-900 text-white p-2 rounded-xl shadow-lg hover:scale-105 transition" title="Scanner un produit"><ScanBarcode size={24}/></button>
+                        <button onClick={() => setIsAddingMeal(true)} className="bg-indigo-600 text-white p-2 rounded-xl shadow-lg hover:scale-105 transition" title="Ajout manuel"><Plus size={24}/></button>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-8 mb-6">
+                    <div className="text-center">
+                        <div className="text-xs font-bold text-slate-400 uppercase mb-1">Objectif</div>
+                        <div className="text-xl font-black text-slate-700">{targetCalories}</div>
+                    </div>
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                        {/* CERCLE DE PROGRÈS SIMPLE SVG */}
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+                            <circle 
+                                cx="50" cy="50" r="45" fill="none" stroke={currentTotals.kcal > targetCalories ? "#f43f5e" : "#4f46e5"} strokeWidth="10" 
+                                strokeDasharray="283" 
+                                strokeDashoffset={283 - (Math.min(currentTotals.kcal / targetCalories, 1) * 283)} 
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-slate-800">{targetCalories - currentTotals.kcal}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Restant</span>
+                        </div>
+                    </div>
+                    <div className="text-center">
+                         <div className="text-xs font-bold text-slate-400 uppercase mb-1">Mangé</div>
+                         <div className="text-xl font-black text-indigo-600">{currentTotals.kcal}</div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                    <MacroBar label="Glucides" current={currentTotals.carbs} target={carbTarget} icon={Wheat} color={{bg:'bg-amber-100', text:'text-amber-600', fill:'bg-amber-400'}} />
+                    <MacroBar label="Protéines" current={currentTotals.protein} target={proteinTarget} icon={Beef} color={{bg:'bg-blue-100', text:'text-blue-600', fill:'bg-blue-500'}} />
+                    <MacroBar label="Lipides" current={currentTotals.fats} target={fatTarget} icon={Droplet} color={{bg:'bg-rose-100', text:'text-rose-600', fill:'bg-rose-400'}} />
+                </div>
+            </div>
+
+            {/* CONFIGURATION RAPIDE PROFIL (SI MANQUANT) */}
+            {(!userData.height || !userData.gender || !userData.age) && (
+                <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl animate-in fade-in">
+                    <h4 className="font-bold text-orange-800 text-sm mb-2 flex items-center gap-2"><AlertTriangle size={16}/> Complétez votre profil</h4>
+                    <p className="text-xs text-orange-700 mb-3">Pour un calcul précis, nous avons besoin de vos infos.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        <input type="number" placeholder="Taille (cm)" className="p-2 rounded-lg text-sm border-orange-200" value={userData.height || ''} onChange={(e) => setUserData({...userData, height: parseInt(e.target.value)})} />
+                        <input type="number" placeholder="Âge" className="p-2 rounded-lg text-sm border-orange-200" value={userData.age || ''} onChange={(e) => setUserData({...userData, age: parseInt(e.target.value)})} />
+                        <select className="p-2 rounded-lg text-sm border-orange-200 col-span-2" value={userData.gender || ''} onChange={(e) => setUserData({...userData, gender: e.target.value})}>
+                            <option value="">Sélectionner le genre</option>
+                            <option value="male">Homme</option>
+                            <option value="female">Femme</option>
+                        </select>
+                    </div>
+                </div>
+            )}
+
+            {/* SUIVI DE POIDS SIMPLIFIÉ */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center"><Scale size={20}/></div>
+                    <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase">Poids Actuel</div>
+                        <div className="font-black text-lg text-slate-800 flex items-baseline gap-1">{userData.weight} <span className="text-sm font-medium text-slate-400">kg</span></div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setUserData({...userData, weight: userData.weight - 0.5})} className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"><Minus size={16}/></button>
+                    <button onClick={() => setUserData({...userData, weight: userData.weight + 0.5})} className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200"><Plus size={16}/></button>
+                </div>
+            </div>
+
+            {/* SÉLECTEUR OBJECTIF */}
+             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-1 flex">
+                {[
+                    {id: 'cut', label: 'Perte', icon: TrendingDown},
+                    {id: 'maintain', label: 'Maintien', icon: Activity},
+                    {id: 'bulk', label: 'Masse', icon: TrendingUp}
+                ].map(g => (
+                    <button 
+                        key={g.id}
+                        onClick={() => setUserData({...userData, nutritionGoal: g.id})}
+                        className={`flex-1 py-3 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition ${userData.nutritionGoal === g.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                        <g.icon size={16}/> {g.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* LISTE DES REPAS */}
+            <div>
+                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2"><Utensils size={18}/> Journal du jour</h4>
+                {todayLog.length > 0 ? (
+                    <div className="space-y-2">
+                        {todayLog.map((meal) => (
+                            <div key={meal.id} className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm">
+                                <div>
+                                    <div className="font-bold text-sm text-slate-700">{meal.name}</div>
+                                    <div className="text-[10px] text-slate-400 flex gap-2">
+                                        <span>{meal.kcal} kcal</span>
+                                        {meal.protein && <span>• {meal.protein}g P</span>}
+                                        {meal.carbs && <span>• {meal.carbs}g G</span>}
+                                        {meal.fats && <span>• {meal.fats}g L</span>}
+                                    </div>
+                                </div>
+                                <button onClick={() => deleteMeal(meal.id)} className="text-slate-300 hover:text-rose-500 p-2"><Trash2 size={16}/></button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        Aucun repas enregistré aujourd'hui.
+                    </div>
+                )}
+            </div>
+
+            {/* MODAL AJOUT REPAS */}
+            {isAddingMeal && (
+                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 animate-in slide-in-from-bottom-10">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-black text-xl text-slate-800">Ajouter un aliment</h3>
+                            <button onClick={() => setIsAddingMeal(false)} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase">Nom</label>
+                                <input type="text" autoFocus className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ex: Banane, Poulet..." value={newMeal.name} onChange={e => setNewMeal({...newMeal, name: e.target.value})} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase">Calories</label>
+                                    <div className="relative">
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" value={newMeal.kcal} onChange={e => setNewMeal({...newMeal, kcal: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">kcal</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase">Protéines</label>
+                                    <div className="relative">
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.protein} onChange={e => setNewMeal({...newMeal, protein: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase">Glucides</label>
+                                    <div className="relative">
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.carbs} onChange={e => setNewMeal({...newMeal, carbs: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase">Lipides</label>
+                                    <div className="relative">
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.fats} onChange={e => setNewMeal({...newMeal, fats: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={addMeal} disabled={!newMeal.name || !newMeal.kcal} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 mt-4">Ajouter au journal</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ExerciseCatalog = ({ onClose, onSelect }) => {
   const [activeCategory, setActiveCategory] = useState('Jambes');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1034,7 +1413,7 @@ const SessionHistoryDetail = ({ session, exercisesLog, onClose }) => {
 
 // --- 4. MAIN APP ---
 export default function App() {
-  const defaultUserData = { name: "User", weight: 75, goalTime: 50, targetDistance: '10k', runDaysPerWeek: 3, strengthDaysPerWeek: 2, hyroxSessionsPerWeek: 3, extraRunSessions: 0, extraStrengthSessions: 0, strengthFocus: 'hypertrophy', durationWeeks: 10, progressionStart: 15, difficultyFactor: 1.0, raceDate: null };
+  const defaultUserData = { name: "User", weight: 75, height: 175, age: 30, gender: 'male', goalTime: 50, targetDistance: '10k', runDaysPerWeek: 3, strengthDaysPerWeek: 2, hyroxSessionsPerWeek: 3, extraRunSessions: 0, extraStrengthSessions: 0, strengthFocus: 'hypertrophy', durationWeeks: 10, progressionStart: 15, difficultyFactor: 1.0, raceDate: null, nutritionGoal: 'maintain' };
   const loadState = (key, defaultValue) => {
     if (typeof window === 'undefined') return defaultValue;
     try { const saved = localStorage.getItem('clab_storage'); if (saved) { const parsed = JSON.parse(saved); if (key === 'userData') return { ...defaultValue, ...(parsed[key] || {}) }; if (key === 'completedSessions') return new Set(parsed.completedSessions || []); if (key === 'completedExercises') return new Set(parsed.completedExercises || []); return parsed[key] !== undefined ? parsed[key] : defaultValue; } } catch (e) { console.error(e); } return defaultValue;
@@ -1049,9 +1428,10 @@ export default function App() {
   const [completedSessions, setCompletedSessions] = useState(() => loadState('completedSessions', new Set()));
   const [completedExercises, setCompletedExercises] = useState(() => loadState('completedExercises', new Set()));
   const [exercisesLog, setExercisesLog] = useState(() => loadState('exercisesLog', {}));
+  const [nutritionLog, setNutritionLog] = useState(() => loadState('nutritionLog', {})); // New state for nutrition
   const [calculationMode, setCalculationMode] = useState('weeks'); // 'weeks' or 'date'
 
-  useEffect(() => { const dataToSave = { step, activeTab, userData, plan, expandedWeek, completedSessions: Array.from(completedSessions), completedExercises: Array.from(completedExercises), exercisesLog }; localStorage.setItem('clab_storage', JSON.stringify(dataToSave)); }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises, exercisesLog]);
+  useEffect(() => { const dataToSave = { step, activeTab, userData, plan, expandedWeek, completedSessions: Array.from(completedSessions), completedExercises: Array.from(completedExercises), exercisesLog, nutritionLog }; localStorage.setItem('clab_storage', JSON.stringify(dataToSave)); }, [step, activeTab, userData, plan, expandedWeek, completedSessions, completedExercises, exercisesLog, nutritionLog]);
 
   const [modalExercise, setModalExercise] = useState(null); 
   const [filteredSessionIds, setFilteredSessionIds] = useState(null);
@@ -1253,6 +1633,7 @@ export default function App() {
              <div className="flex w-full sm:w-auto bg-slate-800 rounded-lg p-1">
                     <button onClick={() => setActiveTab('plan')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'plan' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Programme</button>
                     <button onClick={() => setActiveTab('stats')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center ${activeTab === 'stats' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Science</button>
+                    <button onClick={() => setActiveTab('nutrition')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-xs font-bold transition text-center flex items-center justify-center gap-1 ${activeTab === 'nutrition' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}><Utensils size={12}/> Nutrition</button>
               </div>
             </div>
         </div>
@@ -1729,6 +2110,8 @@ export default function App() {
                 );
             })}
           </div>
+        ) : activeTab === 'nutrition' ? (
+             <NutritionView userData={userData} setUserData={setUserData} nutritionLog={nutritionLog} setNutritionLog={setNutritionLog} />
         ) : (
           // --- ONGLET STATS & SCIENCE (Complet) ---
           <div className="space-y-6 animate-in slide-in-from-left-4">
