@@ -727,44 +727,86 @@ const InstallGuide = ({ onClose }) => ( <div className="fixed inset-0 z-50 flex 
 // --- NUTRITION COMPONENTS ---
 
 const ScannerModal = ({ onClose, onScanSuccess }) => {
-    const videoRef = useRef(null);
     const [barcode, setBarcode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const scannerRef = useRef(null);
 
     useEffect(() => {
-        let stream = null;
-        const startCamera = async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (err) {
-                console.error("Erreur caméra:", err);
-                setError("Accès caméra refusé ou indisponible.");
+        // Load html5-qrcode library dynamically
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/html5-qrcode";
+        script.async = true;
+        
+        script.onload = () => {
+            if(!window.Html5Qrcode) {
+                setError("Erreur chargement librairie.");
+                return;
             }
+
+            const html5QrCode = new window.Html5Qrcode("reader");
+            scannerRef.current = html5QrCode;
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            // Prefer back camera
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                (decodedText) => {
+                    // Success callback
+                    html5QrCode.pause(); // Pause scanning
+                    fetchProduct(decodedText);
+                },
+                (errorMessage) => {
+                    // Scanning... (ignore errors for each frame)
+                }
+            ).catch(err => {
+                console.error(err);
+                setError("Accès caméra refusé. Vérifiez vos permissions.");
+            });
         };
-        startCamera();
+
+        document.body.appendChild(script);
+
         return () => {
-            if (stream) stream.getTracks().forEach(track => track.stop());
+            if (scannerRef.current) {
+                try {
+                    scannerRef.current.stop().then(() => scannerRef.current.clear());
+                } catch (e) { console.log("Scanner stop error", e); }
+            }
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
         };
     }, []);
 
     const fetchProduct = async (code) => {
         setLoading(true);
         setError(null);
+        setBarcode(code); // Show detected code in input
         try {
             const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
             const data = await response.json();
             if (data.status === 1) {
-                onScanSuccess(data.product);
-                onClose();
+                 // Beep sound
+                 const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                 audio.play().catch(e => console.log("Audio error", e));
+                 
+                 // Close scanner properly before callback
+                 if(scannerRef.current) {
+                     await scannerRef.current.stop();
+                     scannerRef.current.clear();
+                 }
+                 onScanSuccess(data.product);
+                 onClose();
             } else {
-                setError("Produit introuvable sur OpenFoodFacts.");
+                setError("Produit introuvable. Scannez un autre code.");
+                if(scannerRef.current) scannerRef.current.resume(); // Resume scanning
             }
         } catch (err) {
-            setError("Erreur de connexion.");
+            setError("Erreur réseau.");
+            if(scannerRef.current) scannerRef.current.resume();
         } finally {
             setLoading(false);
         }
@@ -778,19 +820,24 @@ const ScannerModal = ({ onClose, onScanSuccess }) => {
                     <button onClick={onClose} className="p-2 bg-white/10 rounded-full text-white"><X size={20}/></button>
                 </div>
                 
-                <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-900">
-                    {!error ? (
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover opacity-80"></video>
-                    ) : (
-                        <div className="text-white text-center p-6">
-                            <AlertTriangle size={48} className="mx-auto mb-4 text-rose-500"/>
-                            <p>{error}</p>
+                <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
+                    <div id="reader" className="w-full h-full object-cover"></div>
+                    
+                    {/* OVERLAYS */}
+                    {error && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 p-6 text-center">
+                            <div>
+                                <AlertTriangle size={48} className="mx-auto mb-4 text-rose-500"/>
+                                <p className="text-white mb-4">{error}</p>
+                                <button onClick={() => { setError(null); window.location.reload(); }} className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold">Réessayer</button>
+                            </div>
                         </div>
                     )}
-                    <div className="absolute inset-0 border-[50px] border-black/50 pointer-events-none"></div>
-                    <div className="absolute w-64 h-40 border-2 border-white/50 rounded-lg pointer-events-none flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-red-500/80 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
-                    </div>
+                     {loading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                            <RefreshCw className="animate-spin text-white" size={48}/>
+                        </div>
+                    )}
                 </div>
 
                 <div className="p-6 bg-slate-900 border-t border-slate-800 space-y-4">
