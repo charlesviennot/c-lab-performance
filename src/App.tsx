@@ -870,19 +870,11 @@ const ScannerModal = ({ onClose, onScanSuccess }) => {
     );
 };
 
-const recalculateNutrients = (meal) => {
-  if (!meal.kcal_per_100g || !meal.quantity) return meal;
-  
-  const factor = meal.quantity / 100;
-  return {
-    ...meal,
-    kcal: Math.round(meal.kcal_per_100g * factor),
-    protein: Math.round(meal.protein_per_100g * factor),
-    carbs: Math.round(meal.carbs_per_100g * factor),
-    fats: Math.round(meal.fats_per_100g * factor)
-  };
-};
-
+const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog }) => {
+    const [isAddingMeal, setIsAddingMeal] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [newMeal, setNewMeal] = useState({ name: '', kcal: '', protein: '', carbs: '', fats: '' });
+    
     // Calculs Métaboliques (Mifflin-St Jeor)
     const calculateTDEE = () => {
         if (!userData.weight || !userData.height || !userData.age || !userData.gender) return 2000;
@@ -943,24 +935,24 @@ const recalculateNutrients = (meal) => {
     };
 
     const handleScanSuccess = (product) => {
-    // Extraction sécurisée des données OpenFoodFacts (nutriments pour 100g)
+        // Extraction sécurisée des données OpenFoodFacts
+        const handleScanSuccess = (product) => {
     const name = product.product_name || "Produit scanné";
     const nutriments = product.nutriments || {};
     
     setNewMeal({
         name: name,
-        quantity: 100,  // ← NOUVEAU : quantité par défaut = 100g
-        kcal_per_100g: Math.round(nutriments['energy-kcal_100g'] || 0),  // ← NOUVEAU : valeur de RÉFÉRENCE (100g)
-        protein_per_100g: Math.round(nutriments.proteins_100g || 0),     // ← NOUVEAU : valeur de RÉFÉRENCE (100g)
-        carbs_per_100g: Math.round(nutriments.carbohydrates_100g || 0),  // ← NOUVEAU : valeur de RÉFÉRENCE (100g)
-        fats_per_100g: Math.round(nutriments.fat_100g || 0),             // ← NOUVEAU : valeur de RÉFÉRENCE (100g)
-        // Calculs initiaux (pour la première fois, c'est pareil : 100g = 100%)
+        quantity: 100,
+        kcal_per_100g: Math.round(nutriments['energy-kcal_100g'] || 0),
+        protein_per_100g: Math.round(nutriments.proteins_100g || 0),
+        carbs_per_100g: Math.round(nutriments.carbohydrates_100g || 0),
+        fats_per_100g: Math.round(nutriments.fat_100g || 0),
         kcal: Math.round(nutriments['energy-kcal_100g'] || 0),
         protein: Math.round(nutriments.proteins_100g || 0),
         carbs: Math.round(nutriments.carbohydrates_100g || 0),
         fats: Math.round(nutriments.fat_100g || 0)
     });
-    setIsAddingMeal(true); // Ouvre le modal d'ajout pré-rempli
+    setIsAddingMeal(true);
 };
 
     const MacroBar = ({ label, current, target, color, icon: Icon, unit = 'g' }) => {
@@ -1109,91 +1101,68 @@ const recalculateNutrients = (meal) => {
                 )}
             </div>
 
-                        {/* MODAL AJOUT REPAS */}
-            {isAddingMeal && (
-                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 animate-in slide-in-from-bottom-10">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-black text-xl text-slate-800">Ajouter un aliment</h3>
-                            <button onClick={() => setIsAddingMeal(false)} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
-                        </div>
-                        <div className="space-y-4">
+                                    <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase">Nom</label>
                                 <input type="text" autoFocus className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ex: Banane, Poulet..." value={newMeal.name} onChange={e => setNewMeal({...newMeal, name: e.target.value})} />
                             </div>
 
-                            {/* NOUVELLE SECTION: SÉLECTEUR DE QUANTITÉ */}
+                            {/* NOUVELLE SECTION: QUANTITÉ */}
                             {newMeal.kcal_per_100g && (
                               <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                                 <label className="text-xs font-bold text-indigo-700 uppercase flex items-center gap-2 mb-3">
                                   <Scale size={14} /> Quantité
                                 </label>
                                 <div className="space-y-3">
-                                  {/* SLIDER POUR QUANTITÉ */}
+                                  {/* Slider */}
                                   <input
                                     type="range"
-                                    min="10"
-                                    max="500"
-                                    step="10"
+                                    min="10" max="500" step="10"
                                     value={newMeal.quantity || 100}
                                     onChange={(e) => {
-                                      const updatedMeal = {
-                                        ...newMeal,
-                                        quantity: parseInt(e.target.value)
-                                      };
+                                      const updatedMeal = { ...newMeal, quantity: parseInt(e.target.value) };
                                       setNewMeal(recalculateNutrients(updatedMeal));
                                     }}
                                     className="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                   />
-
-                                  {/* AFFICHAGE + INPUTS POUR QUANTITÉ */}
-                                  <div className="flex items-center gap-2">
+                                  
+                                  {/* +/- et input */}
+                                  <div className="flex gap-2 items-center">
                                     <button
                                       onClick={() => {
-                                        const newQuantity = Math.max(10, (newMeal.quantity || 100) - 10);
-                                        const updatedMeal = { ...newMeal, quantity: newQuantity };
+                                        const newQty = Math.max(10, (newMeal.quantity || 100) - 10);
+                                        const updatedMeal = { ...newMeal, quantity: newQty };
                                         setNewMeal(recalculateNutrients(updatedMeal));
                                       }}
-                                      className="p-2 bg-indigo-200 rounded-lg hover:bg-indigo-300 transition"
-                                    >
-                                      <Minus size={16} className="text-indigo-700" />
-                                    </button>
-
+                                      className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200"
+                                    >-</button>
                                     <input
                                       type="number"
-                                      min="10"
-                                      max="500"
-                                      className="flex-1 p-2 text-center bg-white border border-indigo-200 rounded-lg font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                      min="10" max="500"
                                       value={newMeal.quantity || 100}
                                       onChange={(e) => {
-                                        const val = Math.max(10, Math.min(500, parseInt(e.target.value) || 100));
-                                        const updatedMeal = { ...newMeal, quantity: val };
+                                        const newQty = Math.min(500, Math.max(10, parseInt(e.target.value) || 100));
+                                        const updatedMeal = { ...newMeal, quantity: newQty };
                                         setNewMeal(recalculateNutrients(updatedMeal));
                                       }}
+                                      className="flex-1 text-center p-2 border border-indigo-200 rounded-lg font-bold text-indigo-700 text-sm"
                                     />
-
-                                    <span className="text-sm font-bold text-indigo-700">g</span>
-
+                                    <span className="text-xs font-bold text-indigo-600">g</span>
                                     <button
                                       onClick={() => {
-                                        const newQuantity = Math.min(500, (newMeal.quantity || 100) + 10);
-                                        const updatedMeal = { ...newMeal, quantity: newQuantity };
+                                        const newQty = Math.min(500, (newMeal.quantity || 100) + 10);
+                                        const updatedMeal = { ...newMeal, quantity: newQty };
                                         setNewMeal(recalculateNutrients(updatedMeal));
                                       }}
-                                      className="p-2 bg-indigo-200 rounded-lg hover:bg-indigo-300 transition"
-                                    >
-                                      <Plus size={16} className="text-indigo-700" />
-                                    </button>
+                                      className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200"
+                                    >+</button>
                                   </div>
 
-                                  {/* AFFICHAGE DES NUTRIMENTS PAR 100G (RÉFÉRENCE) */}
+                                  {/* Boîte "Par 100g" */}
                                   <div className="text-[10px] text-indigo-600 bg-white p-2 rounded-lg border border-indigo-100">
                                     <div className="font-bold mb-1">Par 100g :</div>
-                                    <div className="space-y-0.5">
-                                      <div>{newMeal.kcal_per_100g} kcal</div>
-                                      <div>P: {newMeal.protein_per_100g}g | G: {newMeal.carbs_per_100g}g | L: {newMeal.fats_per_100g}g</div>
-                                    </div>
+                                    <div>{newMeal.kcal_per_100g} kcal</div>
+                                    <div>P: {newMeal.protein_per_100g}g | G: {newMeal.carbs_per_100g}g | L: {newMeal.fats_per_100g}g</div>
                                   </div>
                                 </div>
                               </div>
@@ -1203,15 +1172,15 @@ const recalculateNutrients = (meal) => {
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Calories</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-indigo-50 rounded-xl border border-indigo-200 font-bold text-indigo-700 outline-none" placeholder="0" value={newMeal.kcal || 0} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-indigo-600">kcal</span>
+                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" value={newMeal.kcal} onChange={e => setNewMeal({...newMeal, kcal: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">kcal</span>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Protéines</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-indigo-50 rounded-xl border border-indigo-200 font-bold text-indigo-700 outline-none" placeholder="0" value={newMeal.protein || 0} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-indigo-600">g</span>
+                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.protein} onChange={e => setNewMeal({...newMeal, protein: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
                                     </div>
                                 </div>
                             </div>
@@ -1219,23 +1188,27 @@ const recalculateNutrients = (meal) => {
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Glucides</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-indigo-50 rounded-xl border border-indigo-200 font-bold text-indigo-700 outline-none" placeholder="0" value={newMeal.carbs || 0} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-indigo-600">g</span>
+                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.carbs} onChange={e => setNewMeal({...newMeal, carbs: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Lipides</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-indigo-50 rounded-xl border border-indigo-200 font-bold text-indigo-700 outline-none" placeholder="0" value={newMeal.fats || 0} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-indigo-600">g</span>
+                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.fats} onChange={e => setNewMeal({...newMeal, fats: e.target.value})} />
+                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
                                     </div>
                                 </div>
                             </div>
                             <button onClick={addMeal} disabled={!newMeal.name || !newMeal.kcal} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 mt-4">Ajouter au journal</button>
                         </div>
+                        </div>
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
 
 const ExerciseCatalog = ({ onClose, onSelect }) => {
   const [activeCategory, setActiveCategory] = useState('Jambes');
@@ -1600,7 +1573,7 @@ export default function App() {
   const adaptDifficulty = (weekNum, action) => { let message = ""; let type = 'neutral'; if (action === 'easier') { const newFactor = userData.difficultyFactor + 0.05; setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures ralenties de 5% pour la suite (récupération)."; type = 'warning'; } else if (action === 'harder') { const newFactor = Math.max(0.8, userData.difficultyFactor - 0.05); setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures accélérées de 5% pour la suite (performance) !"; type = 'success'; } else { message = "Semaine validée ! Maintien de la progression prévue."; type = 'success'; } setFeedbackMessage({ text: message, type }); if (weekNum < userData.durationWeeks) setExpandedWeek(weekNum + 1); else setExpandedWeek(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const handleDayClick = (daySessionIds) => { if (!daySessionIds || daySessionIds.length === 0) { setFilteredSessionIds(null); setExpandedSession(null); return; } if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { setFilteredSessionIds(null); setExpandedSession(null); } else { setFilteredSessionIds(daySessionIds); if (daySessionIds.length > 0) { setExpandedSession(daySessionIds[0]); } } };
   
-  // --- NOUVELLE FONCTION LOGIQUE DATE (CORRECTIF iOS / TZ) ---
+  // --- NOUVELLE FONCTION LOGIQUE DATE ---
 const handleDateSelection = (e) => {
   const dateStr = e?.target?.value;
   if (!dateStr) return;
