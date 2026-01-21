@@ -892,18 +892,6 @@ const recalculateNutrients = (meal) => {
   };
 };
 
-const recalculateNutrients = (meal) => {
-  if (!meal.kcal_per_100g || !meal.quantity) return meal;
-  const factor = meal.quantity / 100;
-  return {
-    ...meal,
-    kcal: Math.round(meal.kcal_per_100g * factor),
-    protein: Math.round(meal.protein_per_100g * factor),
-    carbs: Math.round(meal.carbs_per_100g * factor),
-    fats: Math.round(meal.fats_per_100g * factor)
-  };
-};
-
 const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog }) => {
     const [isAddingMeal, setIsAddingMeal] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -949,25 +937,20 @@ const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog })
     const handleScanSuccess = (product) => {
         const name = product.product_name || "Produit scanné";
         const nutriments = product.nutriments || {};
-        
-        // On prépare l'objet avec les valeurs de référence (pour 100g)
-        const baseMeal = {
+        setNewMeal({
             name: name,
-            quantity: 100, // Valeur par défaut
-            // Valeurs fixes pour 100g (pour le calcul)
+            quantity: 100,
             kcal_per_100g: Math.round(nutriments['energy-kcal_100g'] || 0),
             protein_per_100g: Math.round(nutriments.proteins_100g || 0),
             carbs_per_100g: Math.round(nutriments.carbohydrates_100g || 0),
             fats_per_100g: Math.round(nutriments.fat_100g || 0),
-            // Valeurs affichées (initialisées à 100g aussi)
             kcal: Math.round(nutriments['energy-kcal_100g'] || 0),
             protein: Math.round(nutriments.proteins_100g || 0),
             carbs: Math.round(nutriments.carbohydrates_100g || 0),
             fats: Math.round(nutriments.fat_100g || 0)
-        };
-        
-        setNewMeal(baseMeal);
+        });
         setIsAddingMeal(true);
+    };
     };
 
     const deleteMeal = (id) => {
@@ -1126,51 +1109,18 @@ const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog })
                                 <label className="text-xs font-bold text-slate-400 uppercase">Nom</label>
                                 <input type="text" autoFocus className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ex: Banane, Poulet..." value={newMeal.name} onChange={e => setNewMeal({...newMeal, name: e.target.value})} />
                             </div>
-                            {newMeal.kcal_per_100g !== undefined && (
-                              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mt-4 mb-4">
-                                <label className="text-xs font-bold text-indigo-700 uppercase flex items-center gap-2 mb-3"><Scale size={14} /> Quantité consommée</label>
+                            {newMeal.kcal_per_100g && (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                                <label className="text-xs font-bold text-indigo-700 uppercase flex items-center gap-2 mb-3"><Scale size={14} /> Quantité</label>
                                 <div className="space-y-3">
-                                  {/* Le Slider (5 à 1000) */}
-                                  <input 
-                                    type="range" 
-                                    min="5" 
-                                    max="1000" 
-                                    step="5" 
-                                    value={newMeal.quantity || 100} 
-                                    onChange={(e) => { 
-                                        const updatedMeal = { ...newMeal, quantity: parseInt(e.target.value) }; 
-                                        setNewMeal(recalculateNutrients(updatedMeal)); 
-                                    }} 
-                                    className="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                                  />
-                                  
-                                  {/* Les boutons -/+ et l'input manuel */}
+                                  <input type="range" min="10" max="500" step="10" value={newMeal.quantity || 100} onChange={(e) => { const updatedMeal = { ...newMeal, quantity: parseInt(e.target.value) }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
                                   <div className="flex gap-2 items-center">
-                                    <button onClick={() => { const newQty = Math.max(5, (newMeal.quantity || 100) - 5); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">-</button>
-                                    
-                                    <div className="flex-1 relative">
-                                        <input 
-                                            type="number" 
-                                            min="5" 
-                                            max="1000" 
-                                            value={newMeal.quantity || 100} 
-                                            onChange={(e) => { 
-                                                const newQty = Math.min(1000, Math.max(5, parseInt(e.target.value) || 0)); 
-                                                const updatedMeal = { ...newMeal, quantity: newQty }; 
-                                                setNewMeal(recalculateNutrients(updatedMeal)); 
-                                            }} 
-                                            className="w-full text-center p-2 border border-indigo-200 rounded-lg font-bold text-indigo-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
-                                        />
-                                         <span className="absolute right-8 top-2 text-xs font-bold text-indigo-400">g</span>
-                                    </div>
-
-                                    <button onClick={() => { const newQty = Math.min(1000, (newMeal.quantity || 100) + 5); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">+</button>
+                                    <button onClick={() => { const newQty = Math.max(10, (newMeal.quantity || 100) - 10); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">-</button>
+                                    <input type="number" min="10" max="500" value={newMeal.quantity || 100} onChange={(e) => { const newQty = Math.min(500, Math.max(10, parseInt(e.target.value) || 100)); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="flex-1 text-center p-2 border border-indigo-200 rounded-lg font-bold text-indigo-700 text-sm" />
+                                    <span className="text-xs font-bold text-indigo-600">g</span>
+                                    <button onClick={() => { const newQty = Math.min(500, (newMeal.quantity || 100) + 10); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">+</button>
                                   </div>
-
-                                  <div className="text-[10px] text-indigo-600 bg-white p-2 rounded-lg border border-indigo-100 flex justify-between">
-                                     <span className="font-bold">Info 100g :</span>
-                                     <span>{newMeal.kcal_per_100g} kcal • P: {newMeal.protein_per_100g} • G: {newMeal.carbs_per_100g} • L: {newMeal.fats_per_100g}</span>
-                                  </div>
+                                  <div className="text-[10px] text-indigo-600 bg-white p-2 rounded-lg border border-indigo-100"><div className="font-bold mb-1">Par 100g :</div><div>{newMeal.kcal_per_100g} kcal</div><div>P: {newMeal.protein_per_100g}g | G: {newMeal.carbs_per_100g}g | L: {newMeal.fats_per_100g}g</div></div>
                                 </div>
                               </div>
                             )}
