@@ -869,28 +869,6 @@ const ScannerModal = ({ onClose, onScanSuccess }) => {
         </div>
     );
 };
-const recalculateNutrients = (meal) => {
-  if (!meal.kcal_per_100g || !meal.quantity) return meal;
-  const factor = meal.quantity / 100;
-  return {
-    ...meal,
-    kcal: Math.round(meal.kcal_per_100g * factor),
-    protein: Math.round(meal.protein_per_100g * factor),
-    carbs: Math.round(meal.carbs_per_100g * factor),
-    fats: Math.round(meal.fats_per_100g * factor)
-  };
-};
-const recalculateNutrients = (meal) => {
-  if (!meal.kcal_per_100g || !meal.quantity) return meal;
-  const factor = meal.quantity / 100;
-  return {
-    ...meal,
-    kcal: Math.round(meal.kcal_per_100g * factor),
-    protein: Math.round(meal.protein_per_100g * factor),
-    carbs: Math.round(meal.carbs_per_100g * factor),
-    fats: Math.round(meal.fats_per_100g * factor)
-  };
-};
 
 const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog }) => {
     const [isAddingMeal, setIsAddingMeal] = useState(false);
@@ -934,23 +912,20 @@ const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog })
     const todayLog = nutritionLog[today] || [];
     
     const currentTotals = todayLog.reduce((acc, meal) => ({
-    const handleScanSuccess = (product) => {
-        const name = product.product_name || "Produit scanné";
-        const nutriments = product.nutriments || {};
-        setNewMeal({
-            name: name,
-            quantity: 100,
-            kcal_per_100g: Math.round(nutriments['energy-kcal_100g'] || 0),
-            protein_per_100g: Math.round(nutriments.proteins_100g || 0),
-            carbs_per_100g: Math.round(nutriments.carbohydrates_100g || 0),
-            fats_per_100g: Math.round(nutriments.fat_100g || 0),
-            kcal: Math.round(nutriments['energy-kcal_100g'] || 0),
-            protein: Math.round(nutriments.proteins_100g || 0),
-            carbs: Math.round(nutriments.carbohydrates_100g || 0),
-            fats: Math.round(nutriments.fat_100g || 0)
-        });
-        setIsAddingMeal(true);
-    };
+        kcal: acc.kcal + (parseInt(meal.kcal) || 0),
+        protein: acc.protein + (parseInt(meal.protein) || 0),
+        carbs: acc.carbs + (parseInt(meal.carbs) || 0),
+        fats: acc.fats + (parseInt(meal.fats) || 0)
+    }), { kcal: 0, protein: 0, carbs: 0, fats: 0 });
+
+    const addMeal = () => {
+        if (!newMeal.name || !newMeal.kcal) return;
+        const updatedLog = { ...nutritionLog };
+        if (!updatedLog[today]) updatedLog[today] = [];
+        updatedLog[today].push({ ...newMeal, id: Date.now() });
+        setNutritionLog(updatedLog);
+        setNewMeal({ name: '', kcal: '', protein: '', carbs: '', fats: '' });
+        setIsAddingMeal(false);
     };
 
     const deleteMeal = (id) => {
@@ -1104,60 +1079,50 @@ const NutritionView = ({ userData, setUserData, nutritionLog, setNutritionLog })
                                     <div className="font-bold text-sm text-slate-700">{meal.name}</div>
                                     <div className="text-[10px] text-slate-400 flex gap-2">
                                         <span>{meal.kcal} kcal</span>
+                                        {meal.protein && <span>• {meal.protein}g P</span>}
+                                        {meal.carbs && <span>• {meal.carbs}g G</span>}
+                                        {meal.fats && <span>• {meal.fats}g L</span>}
+                                    </div>
+                                </div>
+                                <button onClick={() => deleteMeal(meal.id)} className="text-slate-300 hover:text-rose-500 p-2"><Trash2 size={16}/></button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        Aucun repas enregistré aujourd'hui.
+                    </div>
+                )}
+            </div>
+
+            {/* MODAL AJOUT REPAS */}
+            {isAddingMeal && (
+                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 animate-in slide-in-from-bottom-10">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-black text-xl text-slate-800">Ajouter un aliment</h3>
+                            <button onClick={() => setIsAddingMeal(false)} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
+                        </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase">Nom</label>
                                 <input type="text" autoFocus className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ex: Banane, Poulet..." value={newMeal.name} onChange={e => setNewMeal({...newMeal, name: e.target.value})} />
                             </div>
-                            {newMeal.kcal_per_100g && (
-                              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                                <label className="text-xs font-bold text-indigo-700 uppercase flex items-center gap-2 mb-3"><Scale size={14} /> Quantité</label>
-                                <div className="space-y-3">
-                                  <input type="range" min="10" max="500" step="10" value={newMeal.quantity || 100} onChange={(e) => { const updatedMeal = { ...newMeal, quantity: parseInt(e.target.value) }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
-                                  <div className="flex gap-2 items-center">
-                                    <button onClick={() => { const newQty = Math.max(10, (newMeal.quantity || 100) - 10); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">-</button>
-                                    <input type="number" min="10" max="500" value={newMeal.quantity || 100} onChange={(e) => { const newQty = Math.min(500, Math.max(10, parseInt(e.target.value) || 100)); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="flex-1 text-center p-2 border border-indigo-200 rounded-lg font-bold text-indigo-700 text-sm" />
-                                    <span className="text-xs font-bold text-indigo-600">g</span>
-                                    <button onClick={() => { const newQty = Math.min(500, (newMeal.quantity || 100) + 10); const updatedMeal = { ...newMeal, quantity: newQty }; setNewMeal(recalculateNutrients(updatedMeal)); }} className="px-3 py-2 bg-indigo-100 text-indigo-600 font-bold rounded-lg hover:bg-indigo-200">+</button>
-                                  </div>
-                                  <div className="text-[10px] text-indigo-600 bg-white p-2 rounded-lg border border-indigo-100"><div className="font-bold mb-1">Par 100g :</div><div>{newMeal.kcal_per_100g} kcal</div><div>P: {newMeal.protein_per_100g}g | G: {newMeal.carbs_per_100g}g | L: {newMeal.fats_per_100g}g</div></div>
-                                </div>
-                              </div>
-                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Calories</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" value={newMeal.kcal} onChange={e => setNewMeal({...newMeal, kcal: e.target.value})} />
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" value={newMeal.kcal} onChange={e => setNewMeal({...newMeal, kcal: e.target.value})} />
                                         <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">kcal</span>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase">Protéines</label>
                                     <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.protein} onChange={e => setNewMeal({...newMeal, protein: e.target.value})} />
+                                        <input type="number" className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.protein} onChange={e => setNewMeal({...newMeal, protein: e.target.value})} />
                                         <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase">Glucides</label>
-                                    <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.carbs} onChange={e => setNewMeal({...newMeal, carbs: e.target.value})} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-400 uppercase">Lipides</label>
-                                    <div className="relative">
-                                        <input type="number" readOnly className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opt." value={newMeal.fats} onChange={e => setNewMeal({...newMeal, fats: e.target.value})} />
-                                        <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">g</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={addMeal} disabled={!newMeal.name || !newMeal.kcal} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 mt-4">Ajouter au journal</button>
-                        </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -1523,31 +1488,31 @@ export default function App() {
   const [exerciseSwapSelection, setExerciseSwapSelection] = useState(null);
   const [catalogSessionId, setCatalogSessionId] = useState(null);
   const [activeTimerSessionId, setActiveTimerSessionId] = useState(null); 
-  const handleDateSelection = (e) => {
-    const dateStr = e?.target?.value;
-    if (!dateStr) return;
-    let year, month, day;
-    if (dateStr.includes('-')) {
-      const parts = dateStr.split('-').map(Number);
-      if (parts.length !== 3 || parts.some(isNaN)) { alert("Format invalide"); return; }
-      [year, month, day] = parts;
-    } else if (dateStr.includes('/')) {
-      const parts = dateStr.split('/').map(Number);
-      if (parts.length !== 3 || parts.some(isNaN)) { alert("Format invalide"); return; }
-      [day, month, year] = parts;
-    } else {
-      const parsed = new Date(dateStr);
-      if (isNaN(parsed.getTime())) { alert("Impossible de parser la date"); return; }
-      year = parsed.getFullYear(); month = parsed.getMonth() + 1; day = parsed.getDate();
-    }
-    const targetDate = new Date(year, month - 1, day, 23, 59, 59, 999);
-    const today = new Date();
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-    const diffWeeks = Math.ceil((targetDate.getTime() - today.getTime()) / msPerWeek);
-    if (diffWeeks < 4) { alert("Minimum 4 semaines de préparation requises"); return; }
-    if (diffWeeks > 52) { alert("Maximum 1 an"); return; }
-    setUserData({ ...userData, raceDate: `${year.toString().padStart(4,'0')}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`, durationWeeks: diffWeeks });
-  };
+  const [lastCompletedData, setLastCompletedData] = useState(null); 
+  const [selectedHistorySession, setSelectedHistorySession] = useState(null);
+  const currentTimerRef = useRef(0);
+
+  const handleDistanceSelect = (dist) => { let defaultTime = 50; let defaultDuration = 10; if (dist === '5k') { defaultTime = 25; defaultDuration = 8; } if (dist === '10k') { defaultTime = 50; defaultDuration = 10; } if (dist === '21k') { defaultTime = 105; defaultDuration = 12; } if (dist === '42k') { defaultTime = 240; defaultDuration = 16; } if (dist === 'hyrox') { defaultTime = 90; defaultDuration = 10; } setUserData({ ...userData, targetDistance: dist, goalTime: defaultTime, durationWeeks: defaultDuration, raceDate: null }); setCalculationMode('weeks'); };
+  const handleTimeChange = (delta) => { const isShort = ['5k', '10k', 'hyrox'].includes(userData.targetDistance); const step = isShort ? 0.5 : 1; const newTime = Math.max(15, userData.goalTime + (delta * step)); setUserData({...userData, goalTime: newTime}); };
+  const timeConstraints = getTimeConstraints(userData.targetDistance);
+  const handleSwapRequest = (weekIdx, dayIdx) => { if (swapSelection && swapSelection.weekIdx === weekIdx && swapSelection.dayIdx === dayIdx) { setSwapSelection(null); return; } if (!swapSelection) { setSwapSelection({ weekIdx, dayIdx }); return; } if (swapSelection.weekIdx === weekIdx) { handleSwap(weekIdx, swapSelection.dayIdx, dayIdx); setSwapSelection(null); } else { setSwapSelection({ weekIdx, dayIdx }); } };
+  const handleSwap = (weekIdx, sourceDayIdx, targetDayIdx) => { const newPlan = plan.map(w => { if (w.weekNumber !== weekIdx) return w; const newSchedule = [...w.schedule]; const source = newSchedule[sourceDayIdx]; const target = newSchedule[targetDayIdx]; const tempActivity = source.activity; const tempFocus = source.focus; const tempSessionIds = source.sessionIds; source.activity = target.activity; source.focus = target.focus; source.sessionIds = target.sessionIds; target.activity = tempActivity; target.focus = tempFocus; target.sessionIds = tempSessionIds; return { ...w, schedule: newSchedule }; }); setPlan(newPlan); };
+  const handleExerciseSwapRequest = (weekIdx, sessionId, exIdx) => { if (exerciseSwapSelection && exerciseSwapSelection.sessionId === sessionId && exerciseSwapSelection.exIdx === exIdx) { setExerciseSwapSelection(null); return; } if (exerciseSwapSelection) { if (exerciseSwapSelection.sessionId !== sessionId) { setExerciseSwapSelection({ weekIdx, sessionId, exIdx }); } else { handleExerciseSwap(weekIdx, sessionId, exerciseSwapSelection.exIdx, exIdx); setExerciseSwapSelection(null); } } else { setExerciseSwapSelection({ weekIdx, sessionId, exIdx }); } };
+  const handleExerciseSwap = (weekIdx, sessionId, idx1, idx2) => { const newPlan = plan.map(week => { if (week.weekNumber !== weekIdx) return week; const newSessions = week.sessions.map(session => { if (session.id !== sessionId) return session; const newExercises = [...session.exercises]; [newExercises[idx1], newExercises[idx2]] = [newExercises[idx2], newExercises[idx1]]; return { ...session, exercises: newExercises }; }); return { ...week, sessions: newSessions }; }); setPlan(newPlan); const id1 = `${sessionId}-ex-${idx1}`; const id2 = `${sessionId}-ex-${idx2}`; const newCompleted = new Set(completedExercises); const has1 = newCompleted.has(id1); const has2 = newCompleted.has(id2); if (has1 && !has2) { newCompleted.delete(id1); newCompleted.add(id2); } else if (!has1 && has2) { newCompleted.delete(id2); newCompleted.add(id1); } setCompletedExercises(newCompleted); };
+  const handleAddExercise = (exercise) => { if (!catalogSessionId) return; const newPlan = plan.map(week => ({ ...week, sessions: week.sessions.map(sess => { if (sess.id === catalogSessionId) { return { ...sess, exercises: [...(sess.exercises || []), { ...exercise, sets: 3, reps: '10' }] }; } return sess; }) })); setPlan(newPlan); setCatalogSessionId(null); };
+  const handleDeleteExercise = (weekIdx, sessionId, exIdx) => { const newPlan = plan.map(week => { if (week.weekNumber !== weekIdx) return week; const newSessions = week.sessions.map(session => { if (session.id !== sessionId) return session; const newExercises = session.exercises.filter((_, i) => i !== exIdx); return { ...session, exercises: newExercises }; }); return { ...week, sessions: newSessions }; }); setPlan(newPlan); };
+  const resetWeekOrder = (weekNumber) => { const newPlan = plan.map((week) => { if (week.weekNumber !== weekNumber) return week; const originalSessions = week.sessions; const defaultSchedule = getRecommendedSchedule(originalSessions, userData.targetDistance === 'hyrox'); return { ...week, schedule: defaultSchedule }; }); setPlan(newPlan); };
+  const resetWeekProgress = (week) => { const newCompletedSessions = new Set(completedSessions); const newCompletedExercises = new Set(completedExercises); week.sessions.forEach(session => { if (newCompletedSessions.has(session.id)) { newCompletedSessions.delete(session.id); } if (session.exercises) { session.exercises.forEach((_, idx) => { const exId = `${session.id}-ex-${idx}`; if (newCompletedExercises.has(exId)) { newCompletedExercises.delete(exId); } }); } }); setCompletedSessions(newCompletedSessions); setCompletedExercises(newCompletedExercises); };
+  const stats = useMemo(() => { if (plan.length === 0) return null; let totalSessions = 0, completedCount = 0, totalKm = 0; const weeklyVolume = plan.map(() => 0); const plannedWeeklyVolume = plan.map(() => 0); let plannedIntensityBuckets = { low: 0, high: 0 }; plan.forEach((week, i) => { week.sessions.forEach(session => { plannedWeeklyVolume[i] += session.durationMin; if (session.intensity === 'low') plannedIntensityBuckets.low += session.durationMin; else plannedIntensityBuckets.high += session.durationMin; totalSessions++; const isDone = completedSessions.has(session.id); if (isDone) { completedCount++; weeklyVolume[i] += session.durationMin; if (session.category === 'run' && session.distance) { const km = parseFloat(session.distance); if(!isNaN(km)) totalKm += km; } } }); }); return { progress: totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0, totalKm: totalKm.toFixed(1), sessionsDone: completedCount, totalSessions, intensityBuckets: plannedIntensityBuckets, weeklyVolume: plannedWeeklyVolume, realizedWeeklyVolume: weeklyVolume }; }, [plan, completedSessions]);
+  const toggleSession = (id) => { const newSet = new Set(completedSessions); if (!newSet.has(id)) { newSet.add(id); setCompletedSessions(newSet); } };
+  const handleTimerFinish = (sessionId, duration) => { toggleSession(sessionId); setActiveTimerSessionId(null); if(currentTimerRef) currentTimerRef.current = 0; let sessionData = null; for (const week of plan) { const s = week.sessions.find(sess => sess.id === sessionId); if (s) { sessionData = s; break; } } if (sessionData) { setLastCompletedData({ session: sessionData, duration: duration, date: new Date() }); } };
+  const unvalidateSession = (id) => { const newSet = new Set(completedSessions); if (newSet.has(id)) { newSet.delete(id); setCompletedSessions(newSet); } };
+  const toggleExercise = (exerciseUniqueId) => { const newSet = new Set(completedExercises); if (newSet.has(exerciseUniqueId)) { newSet.delete(exerciseUniqueId); } else { newSet.add(exerciseUniqueId); } setCompletedExercises(newSet); };
+  const handleSessionCompleteFromModal = (sessionId, isExercise = false, data = null) => { if (isExercise) { toggleExercise(sessionId); if (data) { setExercisesLog(prev => ({...prev, [sessionId]: data})); } } else { if (!completedSessions.has(sessionId)) { toggleSession(sessionId); } } };
+  const adaptDifficulty = (weekNum, action) => { let message = ""; let type = 'neutral'; if (action === 'easier') { const newFactor = userData.difficultyFactor + 0.05; setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures ralenties de 5% pour la suite (récupération)."; type = 'warning'; } else if (action === 'harder') { const newFactor = Math.max(0.8, userData.difficultyFactor - 0.05); setUserData(prev => ({ ...prev, difficultyFactor: newFactor })); message = "Plan adapté : Allures accélérées de 5% pour la suite (performance) !"; type = 'success'; } else { message = "Semaine validée ! Maintien de la progression prévue."; type = 'success'; } setFeedbackMessage({ text: message, type }); if (weekNum < userData.durationWeeks) setExpandedWeek(weekNum + 1); else setExpandedWeek(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const handleDayClick = (daySessionIds) => { if (!daySessionIds || daySessionIds.length === 0) { setFilteredSessionIds(null); setExpandedSession(null); return; } if (filteredSessionIds && JSON.stringify(filteredSessionIds) === JSON.stringify(daySessionIds)) { setFilteredSessionIds(null); setExpandedSession(null); } else { setFilteredSessionIds(daySessionIds); if (daySessionIds.length > 0) { setExpandedSession(daySessionIds[0]); } } };
+  
+  // --- NOUVELLE FONCTION LOGIQUE DATE ---
   const handleDateSelection = (e) => {
     const dateStr = e.target.value;
     if(!dateStr) return;
